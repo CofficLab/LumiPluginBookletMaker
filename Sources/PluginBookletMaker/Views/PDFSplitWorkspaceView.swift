@@ -17,6 +17,10 @@ struct PDFSplitWorkspaceView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 不在此处打 `split.workspace` 锚点：SwiftUI 会把祖先的
+        // accessibilityIdentifier 下推到每个叶子元素，导致内部的
+        // `split.cutPoint.*` / `split.segment.*` 锚点被同一值覆盖而无法定位。
+        // 需要「工作区已出现」这一信号时，用 `split.cutPoint.1` 等内部锚点。
     }
 
     private var header: some View {
@@ -106,6 +110,10 @@ struct PDFSplitWorkspaceView: View {
         .buttonStyle(.plain)
         .help(BookletLocalization.string("Split after page %lld", Int64(page)))
         .accessibilityLabel(BookletLocalization.string("Split after page %lld", Int64(page)))
+        // 稳定锚点：UI 测试按页码定位切分点，不依赖易变文案或 SF Symbol 名。
+        // `isSelected` 通过 AX value 暴露选中态（见 BookletMakerUITests）。
+        .accessibilityIdentifier("split.cutPoint.\(page)")
+        .accessibilityValue(isSelected ? "selected" : "unselected")
     }
 
     private var resultHeader: some View {
@@ -128,6 +136,7 @@ struct PDFSplitWorkspaceView: View {
                 )
                 .font(DesignTokens.Typography.caption1)
                 .foregroundStyle(theme.textSecondary)
+                .accessibilityIdentifier("split.needsCutPoint")
             }
         }
     }
@@ -165,6 +174,7 @@ struct PDFSplitWorkspaceView: View {
                         "Rename output PDF %lld",
                         Int64(segment.index)
                     ))
+                    .accessibilityIdentifier("split.segment.\(segment.index).fileName")
                     Text(BookletLocalization.string(".pdf"))
                         .font(DesignTokens.Typography.subheadline)
                         .foregroundStyle(theme.textSecondary)
@@ -198,6 +208,9 @@ struct PDFSplitWorkspaceView: View {
             cornerRadius: DesignTokens.Radius.md,
             borderColor: theme.appSubtleBorder
         )
+        // 不在分段行上打锚点：SwiftUI 会把祖先 identifier 下推到叶子，
+        // 覆盖掉内部 `split.segment.N.fileName` 的锚点。
+        // 分段数量改用侧栏的 `split.summary` 断言。
     }
 }
 

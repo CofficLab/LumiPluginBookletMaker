@@ -9,17 +9,25 @@
 /* Begin PBXBuildFile section */
 		08BE7FC6D1306D43AD9938BE /* ProviderStorage in Frameworks */ = {isa = PBXBuildFile; productRef = DF972B28023BDF686995F69B /* ProviderStorage */; };
 		25640B1FE45B2C52F7D185CA /* PluginBookletMaker in Frameworks */ = {isa = PBXBuildFile; productRef = 73002E0B07A13AB03B4347B9 /* PluginBookletMaker */; };
-		33D7E9F25A36D8872EEC2558 /* LumiLoggingKit in Frameworks */ = {isa = PBXBuildFile; productRef = E37AE234734B921FCC7CA46D /* LumiLoggingKit */; };
+		2E16C72377049C88EB981D88 /* TestHostRootLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CAE47A46F54A478BD92EF7 /* TestHostRootLayout.swift */; };
+		31824A4925E0AD670C85F30C /* LumiLocalizationKit in Frameworks */ = {isa = PBXBuildFile; productRef = D8E7A05F9A808740D392259B /* LumiLocalizationKit */; };
+		33D7E9F25A36D8872EEC2558 /* LumiUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4B219F95A403D500B84927FC /* LumiUI */; };
+		3E9F132A8574008F38922591 /* BookletMakerUITestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8D50415B963D1260CB99CC /* BookletMakerUITestCase.swift */; };
+		424A2DB08BAAE48A3F89BA45 /* BookletMakerBookletUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F65CDB9515D384E68BE332A /* BookletMakerBookletUITests.swift */; };
 		635F5F608FCF709BDCE9B6CB /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D2EC6AD545741320FC783E /* App.swift */; };
 		650FED7BBAB30B7865150615 /* BookletMakerCore in Frameworks */ = {isa = PBXBuildFile; productRef = CDA9913ECC2F8797848C27FD /* BookletMakerCore */; };
 		8C64A96C5BCC0CC8DC201FB7 /* ProviderRailView in Frameworks */ = {isa = PBXBuildFile; productRef = 88689047B7221B1692768C12 /* ProviderRailView */; };
-		91750BE42210ABAAF96F8B07 /* LumiLocalizationKit in Frameworks */ = {isa = PBXBuildFile; productRef = D8E7A05F9A808740D392259B /* LumiLocalizationKit */; };
+		91750BE42210ABAAF96F8B07 /* LumiLoggingKit in Frameworks */ = {isa = PBXBuildFile; productRef = E37AE234734B921FCC7CA46D /* LumiLoggingKit */; };
 		A474E5F88078C04FAC2AE36F /* ProviderDocsView in Frameworks */ = {isa = PBXBuildFile; productRef = E547DC186F2EDD5D77C70697 /* ProviderDocsView */; };
 		A856168BF90A624981BA6FBF /* ProviderToolbar in Frameworks */ = {isa = PBXBuildFile; productRef = 4D49213B7D9DB2F2BD06A461 /* ProviderToolbar */; };
 		ACCC1322B43C9A84F8D707E3 /* ProviderContentView in Frameworks */ = {isa = PBXBuildFile; productRef = 5FA831DFFB2ABAA8CBE7F42D /* ProviderContentView */; };
 		C7FA9E147993B67AC906CF65 /* KernelCore in Frameworks */ = {isa = PBXBuildFile; productRef = A472E5097040A40EDB8DDB93 /* KernelCore */; };
-		E244E9A8EDB0D0E92A205240 /* LumiUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4B219F95A403D500B84927FC /* LumiUI */; };
-		F4C8F1582B1B9673A0BE0C3D /* BookletMakerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD701224686D00BB86C97DF /* BookletMakerUITests.swift */; };
+		CA6852E68D0B0CD1A0878A93 /* LumiThemePack in Frameworks */ = {isa = PBXBuildFile; productRef = AA16333FFB96047DEDC03BAB /* LumiThemePack */; };
+		DA81E45BF72DE12F75EA8D55 /* BookletMakerToolSwitchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0541B0CBAA2B756FE8BBE8B9 /* BookletMakerToolSwitchUITests.swift */; };
+		E1AEDC47FDBD5DC0FFF2D176 /* BookletMakerMergeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC9C4960BD0B5F47B85311D8 /* BookletMakerMergeUITests.swift */; };
+		E244E9A8EDB0D0E92A205240 /* ProviderTheme in Frameworks */ = {isa = PBXBuildFile; productRef = A9AFEBFBCC1C2F0A6E008D26 /* ProviderTheme */; };
+		E75A7263230B8F6A031AB8AA /* BookletMakerSplitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1155D17D844DADD8723FEDFC /* BookletMakerSplitUITests.swift */; };
+		F26869F9068BA83144767BBF /* BookletMakerLocalizationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A69282C95CC7C787E1B2CCC /* BookletMakerLocalizationUITests.swift */; };
 		F945E0A059A28B9412498E3A /* ProviderRootView in Frameworks */ = {isa = PBXBuildFile; productRef = 3BB54E30AC1BCF6A480C51E0 /* ProviderRootView */; };
 		FF2A6EF590B3B9DD5FC07C55 /* ProviderActivityBar in Frameworks */ = {isa = PBXBuildFile; productRef = 5E1A15515973E44E90B729BA /* ProviderActivityBar */; };
 /* End PBXBuildFile section */
@@ -35,11 +43,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5FD701224686D00BB86C97DF /* BookletMakerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerUITests.swift; sourceTree = "<group>"; };
+		0541B0CBAA2B756FE8BBE8B9 /* BookletMakerToolSwitchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerToolSwitchUITests.swift; sourceTree = "<group>"; };
+		1155D17D844DADD8723FEDFC /* BookletMakerSplitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerSplitUITests.swift; sourceTree = "<group>"; };
+		1A69282C95CC7C787E1B2CCC /* BookletMakerLocalizationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerLocalizationUITests.swift; sourceTree = "<group>"; };
+		31CAE47A46F54A478BD92EF7 /* TestHostRootLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHostRootLayout.swift; sourceTree = "<group>"; };
+		3F8D50415B963D1260CB99CC /* BookletMakerUITestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerUITestCase.swift; sourceTree = "<group>"; };
+		5F65CDB9515D384E68BE332A /* BookletMakerBookletUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerBookletUITests.swift; sourceTree = "<group>"; };
 		CAA85E60323F290082361ED7 /* BookletMakerTestHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BookletMakerTestHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC9FF72FEF6771781795C97E /* BookletMakerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookletMakerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4D2EC6AD545741320FC783E /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		EC3BA0EA5AD7CD47AA72EF48 /* LumiPluginBookletMaker */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LumiPluginBookletMaker; path = .; sourceTree = SOURCE_ROOT; };
+		EC9C4960BD0B5F47B85311D8 /* BookletMakerMergeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerMergeUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,9 +71,11 @@
 				A856168BF90A624981BA6FBF /* ProviderToolbar in Frameworks */,
 				08BE7FC6D1306D43AD9938BE /* ProviderStorage in Frameworks */,
 				A474E5F88078C04FAC2AE36F /* ProviderDocsView in Frameworks */,
-				E244E9A8EDB0D0E92A205240 /* LumiUI in Frameworks */,
-				33D7E9F25A36D8872EEC2558 /* LumiLoggingKit in Frameworks */,
-				91750BE42210ABAAF96F8B07 /* LumiLocalizationKit in Frameworks */,
+				E244E9A8EDB0D0E92A205240 /* ProviderTheme in Frameworks */,
+				33D7E9F25A36D8872EEC2558 /* LumiUI in Frameworks */,
+				91750BE42210ABAAF96F8B07 /* LumiLoggingKit in Frameworks */,
+				31824A4925E0AD670C85F30C /* LumiLocalizationKit in Frameworks */,
+				CA6852E68D0B0CD1A0878A93 /* LumiThemePack in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				E4D2EC6AD545741320FC783E /* App.swift */,
+				31CAE47A46F54A478BD92EF7 /* TestHostRootLayout.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -86,7 +103,12 @@
 		6B82D306F401908ABB09F5EF /* UITests */ = {
 			isa = PBXGroup;
 			children = (
-				5FD701224686D00BB86C97DF /* BookletMakerUITests.swift */,
+				5F65CDB9515D384E68BE332A /* BookletMakerBookletUITests.swift */,
+				1A69282C95CC7C787E1B2CCC /* BookletMakerLocalizationUITests.swift */,
+				EC9C4960BD0B5F47B85311D8 /* BookletMakerMergeUITests.swift */,
+				1155D17D844DADD8723FEDFC /* BookletMakerSplitUITests.swift */,
+				0541B0CBAA2B756FE8BBE8B9 /* BookletMakerToolSwitchUITests.swift */,
+				3F8D50415B963D1260CB99CC /* BookletMakerUITestCase.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -161,9 +183,11 @@
 				4D49213B7D9DB2F2BD06A461 /* ProviderToolbar */,
 				DF972B28023BDF686995F69B /* ProviderStorage */,
 				E547DC186F2EDD5D77C70697 /* ProviderDocsView */,
+				A9AFEBFBCC1C2F0A6E008D26 /* ProviderTheme */,
 				4B219F95A403D500B84927FC /* LumiUI */,
 				E37AE234734B921FCC7CA46D /* LumiLoggingKit */,
 				D8E7A05F9A808740D392259B /* LumiLocalizationKit */,
+				AA16333FFB96047DEDC03BAB /* LumiThemePack */,
 			);
 			productName = BookletMakerTestHost;
 			productReference = CAA85E60323F290082361ED7 /* BookletMakerTestHost.app */;
@@ -197,6 +221,7 @@
 				56B455D42864DA96703ED248 /* XCRemoteSwiftPackageReference "LumiLocalization" */,
 				70EB7B662F3CF3761221165D /* XCRemoteSwiftPackageReference "LumiLogging" */,
 				360DDF8C5650BE49C6559931 /* XCRemoteSwiftPackageReference "LumiProviders" */,
+				DBF1AB288BC0CEBC840A0E94 /* XCRemoteSwiftPackageReference "LumiThemePack" */,
 				BF3C328D3F4E1D9605E20DF7 /* XCRemoteSwiftPackageReference "LumiUI" */,
 				A8FAFABFD15A58F7FDFC9BFD /* XCLocalSwiftPackageReference "." */,
 			);
@@ -216,7 +241,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F4C8F1582B1B9673A0BE0C3D /* BookletMakerUITests.swift in Sources */,
+				424A2DB08BAAE48A3F89BA45 /* BookletMakerBookletUITests.swift in Sources */,
+				F26869F9068BA83144767BBF /* BookletMakerLocalizationUITests.swift in Sources */,
+				E1AEDC47FDBD5DC0FFF2D176 /* BookletMakerMergeUITests.swift in Sources */,
+				E75A7263230B8F6A031AB8AA /* BookletMakerSplitUITests.swift in Sources */,
+				DA81E45BF72DE12F75EA8D55 /* BookletMakerToolSwitchUITests.swift in Sources */,
+				3E9F132A8574008F38922591 /* BookletMakerUITestCase.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,6 +255,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				635F5F608FCF709BDCE9B6CB /* App.swift in Sources */,
+				2E16C72377049C88EB981D88 /* TestHostRootLayout.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -512,6 +543,14 @@
 				minimumVersion = 1.10.0;
 			};
 		};
+		DBF1AB288BC0CEBC840A0E94 /* XCRemoteSwiftPackageReference "LumiThemePack" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CofficLab/LumiThemePack.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.6;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -553,6 +592,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 88F079112CF485B015DE9264 /* XCRemoteSwiftPackageReference "LumiKernel" */;
 			productName = KernelCore;
+		};
+		A9AFEBFBCC1C2F0A6E008D26 /* ProviderTheme */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 360DDF8C5650BE49C6559931 /* XCRemoteSwiftPackageReference "LumiProviders" */;
+			productName = ProviderTheme;
+		};
+		AA16333FFB96047DEDC03BAB /* LumiThemePack */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DBF1AB288BC0CEBC840A0E94 /* XCRemoteSwiftPackageReference "LumiThemePack" */;
+			productName = LumiThemePack;
 		};
 		CDA9913ECC2F8797848C27FD /* BookletMakerCore */ = {
 			isa = XCSwiftPackageProductDependency;

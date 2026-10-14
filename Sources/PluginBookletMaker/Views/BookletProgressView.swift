@@ -43,6 +43,7 @@ struct BookletProgressView: View {
                             viewModel.revealInFinder(url)
                         }
                     }
+                    .accessibilityIdentifier("workspace.showInFinder")
                 } else if let error = viewModel.errorMessage {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(theme.warning)
@@ -58,5 +59,15 @@ struct BookletProgressView: View {
                 }
             }
         }
+        // 状态条锚点：UI 测试据此区分「渲染中 / 预览准备中 / 导出完成 / 报错 / 就绪」，
+        // 无需依赖易变的状态文案。
+        .accessibilityIdentifier("workspace.status")
+        .accessibilityValue(
+            viewModel.isRendering ? "rendering"
+                : viewModel.isPreparingPreview ? "preparing"
+                : viewModel.lastOutputURL != nil ? "completed"
+                : viewModel.errorMessage != nil ? "failed"
+                : "ready"
+        )
     }
 }

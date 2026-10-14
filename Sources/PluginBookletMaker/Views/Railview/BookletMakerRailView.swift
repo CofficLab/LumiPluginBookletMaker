@@ -98,6 +98,9 @@ struct BookletMakerRailView: View {
                     PaperSize.allCases.map(\.displayName),
                     selection: paperSizeSelection
                 )
+                // 锚点挂在 segmented control 的外层：按「行标题 + 选项文字」定位，
+                // 比按 SF Symbol 或控件序号定位更稳定。
+                .accessibilityIdentifier("booklet.outputPaper")
             }
 
             AppSettingRow(title: BookletLocalization.string("Layout")) {
@@ -108,6 +111,7 @@ struct BookletMakerRailView: View {
                     ],
                     selection: layoutSelection
                 )
+                .accessibilityIdentifier("booklet.layoutPicker")
             }
 
             settingSlider(
@@ -125,12 +129,15 @@ struct BookletMakerRailView: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .disabled(viewModel.settings.layout == .bookletFold)
+                    .accessibilityIdentifier("booklet.padBlankPage")
             }
             AppSettingToggleRow(
                 BookletLocalization.string("Add cut marks"),
                 isOn: $viewModel.settings.addCutMarks
             )
+            .accessibilityIdentifier("booklet.addCutMarks")
         }
+        .accessibilityIdentifier("booklet.settings")
     }
 
     private var splitSettings: some View {
@@ -145,10 +152,12 @@ struct BookletMakerRailView: View {
                     LocalizedStringKey(BookletLocalization.string("For example: 20, 50, 80")),
                     text: $viewModel.splitCutPointsText
                 )
+                .accessibilityIdentifier("split.cutPointsInput")
             }
 
             if let message = viewModel.splitValidationMessage ?? viewModel.splitFileNameValidationMessage {
                 AppErrorBanner(message: LocalizedStringKey(message))
+                    .accessibilityIdentifier("split.validationError")
             }
 
             AppCard(
@@ -166,6 +175,7 @@ struct BookletMakerRailView: View {
                             "%lld PDF files",
                             Int64(viewModel.splitSegments.count)
                         ))
+                        .accessibilityIdentifier("split.summary")
                     }
 
                     ForEach(Array(viewModel.splitSegments.prefix(6))) { segment in
@@ -230,6 +240,7 @@ struct BookletMakerRailView: View {
                     ))
                     .font(DesignTokens.Typography.caption1)
                     .foregroundStyle(theme.textSecondary)
+                    .accessibilityIdentifier("merge.summary")
                     if viewModel.mergeDocuments.count < 2 {
                         Text(BookletLocalization.string("Select at least two PDF files to merge."))
                             .font(DesignTokens.Typography.caption1)
@@ -237,7 +248,9 @@ struct BookletMakerRailView: View {
                             .accessibilityIdentifier("merge.insufficientHint")
                     }
                 }
-                .accessibilityIdentifier("merge.settingsCard")
+                // 不在此处打 `merge.settingsCard` 锚点：SwiftUI 会把祖先
+                // identifier 下推到叶子，覆盖掉 `merge.summary` 与
+                // `merge.insufficientHint`。卡片是否出现改用 `merge.summary` 判定。
             }
         }
     }
@@ -309,6 +322,21 @@ struct BookletMakerRailView: View {
                     .foregroundStyle(theme.textSecondary)
             }
             Slider(value: value, in: 0 ... 30, step: 1)
+                .accessibilityIdentifier("booklet.slider.\(sliderIdentifier(for: title))")
+                .accessibilityValue(String(Int(value.wrappedValue)))
+        }
+    }
+
+    /// 把本地化行标题折叠成稳定的锚点后缀。
+    ///
+    /// 行标题会随语言变化，不能直接进 identifier；这里对已知取值做映射，
+    /// 未命中时退化为去空格小写，保证 identifier 在各语言下保持一致，
+    /// 不会因切换系统语言而改变 AX 树结构。
+    private func sliderIdentifier(for title: String) -> String {
+        switch title {
+        case BookletLocalization.string("Margin"): return "margin"
+        case BookletLocalization.string("Gutter"): return "gutter"
+        default: return title.lowercased().replacingOccurrences(of: " ", with: "")
         }
     }
 

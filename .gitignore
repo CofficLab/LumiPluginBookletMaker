@@ -5,3 +5,6 @@ build/
 xcuserdata/
 .DS_Store
 Package.resolved
+
+# 覆盖率原始数据
+*.profraw

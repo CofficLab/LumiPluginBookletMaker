@@ -22,7 +22,7 @@ struct BookletExplanationView: View {
     /// 当前选中的物理纸张（装订前模式，0-based）
     @State private var selectedSheet: Int = 0
 
-    private enum BindingTab {
+    private enum BindingTab: String {
         /// 原始 PDF：展示拼版前的 8 页输入页面。
         case original
         /// 转换后：展示拼版产出的 4 张 A4 输出 PDF。
@@ -167,6 +167,10 @@ struct BookletExplanationView: View {
                     : DesignTokens.Typography.body)
                 .foregroundStyle(isSelected ? theme.primary : theme.textPrimary)
         }
+        // 稳定锚点：阶段 tab 的标题随语言变化，identifier 固定为
+        // `booklet.preview.<stage>`，UI 测试据此逐个点击并断言选中态。
+        .accessibilityIdentifier("booklet.preview.\(tab.rawValue)")
+        .accessibilityValue(isSelected ? "selected" : "unselected")
     }
 
     /// 张数 tab 列表（装订前模式时高亮显示）
@@ -218,6 +222,8 @@ struct BookletExplanationView: View {
             }
             .foregroundStyle(isSelected ? theme.primary : theme.textPrimary)
         }
+        .accessibilityIdentifier("booklet.sheet.\(index + 1)")
+        .accessibilityValue(isSelected ? "selected" : "unselected")
     }
 
     // MARK: - Right Content

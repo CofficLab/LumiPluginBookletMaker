@@ -87,26 +87,75 @@ swift test
 
 ## Testing
 
-The package ships two test targets, matching the two products:
+本包自带三层测试，全部在仓库内，无需外部宿主工程即可验证。
 
-| Test target | Scope | Framework |
-|---|---|---|
-| `BookletMakerCoreTests` | Layout engine, paper / settings / split plans — pure domain logic | swift-testing (`@Suite` / `@Test`) |
-| `PluginBookletMakerTests` | Plugin assembly, view model, PDF services, mobile workspace | XCTest |
+| 层 | 位置 | 数量 | 运行方式 |
+|---|---|---|---|
+| 领域层 | `Tests/BookletMakerCoreTests` | swift-testing `@Suite` | `swift test` |
+| 插件层 | `Tests/PluginBookletMakerTests` | 115 项 XCTest | `swift test` |
+| 界面层 | `BookletMakerUITestHost/UITests` | 26 项 XCUITest | `xcodebuild test` |
 
-The `BookletMakerCoreTests` target covers the imposition engine, paper size and
-layout-mode models, booklet settings, and the split-plan parser. The
-`PluginBookletMakerTests` target covers `BookletMakerPlugin` registration
-(rail, content, docs, toolbar, activity bar, storage bridge), the view model,
-the PDF inspector / merger / splitter, the demo PDF provider, and the
-thumbnailer.
-
-Run with code coverage:
+### 单元测试
 
 ```sh
+swift test                                   # 全部
+swift test --filter BookletMakerViewModelTests
 swift test --enable-code-coverage
 ```
 
-UI tests live in the host app — see `BookletMakerUITests` in the GameFactory
-workspace. They are not part of this SPM package because UI testing requires a
-host app target and an Xcode test runner.
+其中 `BookletLocalizationCatalogTests` 是本地化目录的守卫，把四条容易静默退化的
+规则固化为断言：key 在全部五种语言下必须有非空译文、各语言占位符数量须一致且
+定位占位符（`%1$@`）位置连续、代码里引用的每个 key 必须存在于目录、`sourceLanguage`
+须为 `en`。新增文案时忘记维护 xcstrings 会立刻失败，而不是等到某个语种的界面
+里出现一两句漏翻译的英文。
+
+### 界面测试
+
+界面测试需要宿主 App 与 Xcode test runner，因此以 Xcode 工程形式内嵌在仓库内
+（`project.yml` + XcodeGen 生成），不依赖任何宿主专属的私有包。
+
+```sh
+brew install xcodegen          # 一次性
+./generate-ui-test-project.sh  # 生成 BookletMakerUITests.xcodeproj
+xcodebuild test \
+  -project BookletMakerUITests.xcodeproj \
+  -scheme BookletMakerUITests \
+  -destination 'platform=macOS'
+```
+
+`BookletMakerTestHost` 是一个最小宿主 App，按真实宿主（GameFactory 的
+`BookletMakerApp`）的顺序装配：**注册 Provider → 启动插件 → 组装视图**。
+该顺序不可颠倒：插件 `onBoot` 会向 Rail 注册 tab、向 ContentView 注入内容区，
+提前组装会让这些区域停留在空状态。
+
+覆盖范围：
+
+| 套件 | 覆盖 |
+|---|---|
+| `BookletMakerBookletUITests` | 四个预览阶段切换、装订前纸张列表、纸张/版式/滑块/开关交互、补白开关在书本折叠版式下强制禁用、锚点跨语言稳定 |
+| `BookletMakerSplitUITests` | 切分点选中与反选、多切分点独立、导出门控随有效性翻转、页面点击与侧栏输入两条路径等价、非法输入校验、分段重命名 |
+| `BookletMakerMergeUITests` | 空队列与导出禁用、汇总如实反映队列规模、与小册子设置互斥 |
+| `BookletMakerToolSwitchUITests` | 三工具切换后侧栏设置与主按钮文案同步 |
+| `BookletMakerLocalizationUITests` | en / zh-Hans / zh-Hant 文案，以及切换语言后锚点结构不变 |
+
+#### 编写界面测试时的两条约定
+
+1. **只用 `accessibilityIdentifier` 定位元素**，不要用文案——文案随本地化变动，
+   identifier 不会。唯一例外是 `BookletMakerLocalizationUITests`，那里用文案
+   正是为了验证文案本身。
+2. **断言状态而非存在性**：元素存在只说明渲染了，真正要校验的是选中态、
+   启用态、门控原因。
+
+#### 一个容易踩的坑
+
+**不要给容器视图打 `accessibilityIdentifier`。** SwiftUI 会把祖先的 identifier
+下推到每一个叶子元素，导致容器内部的锚点全部被同一值覆盖而无法定位。本包
+曾因此让 `split.cutPoint.*`、`split.summary`、`merge.insufficientHint`
+一度全部失效。若需要判断某个区域是否出现，请在区域内的**叶子元素**上取锚点。
+
+#### 已知差异
+
+测试宿主使用公开的 `DefaultRootViewProviding` 并自行拼装根布局，而真实宿主使用
+自己的根视图实现。测试宿主**不**装配 `CommandProviding` 与设置侧栏插件，因此
+设置窗口相关界面不在本套件覆盖范围内——该能力来自宿主侧包，插件仓库无法自证。
+

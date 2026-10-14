@@ -48,12 +48,16 @@ targets:
         product: ProviderStorage
       - package: LumiProviders
         product: ProviderDocsView
+      - package: LumiProviders
+        product: ProviderTheme
       - package: LumiUI
         product: LumiUI
       - package: LumiLogging
         product: LumiLoggingKit
       - package: LumiLocalization
         product: LumiLocalizationKit
+      - package: LumiThemePack
+        product: LumiThemePack
 
   BookletMakerUITests:
     type: bundle.ui-testing
@@ -85,3 +89,6 @@ packages:
   LumiLocalization:
     url: https://github.com/CofficLab/LumiLocalization.git
     from: 1.0.1
+  LumiThemePack:
+    url: https://github.com/CofficLab/LumiThemePack.git
+    from: 1.0.6
