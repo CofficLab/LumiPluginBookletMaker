@@ -79,6 +79,7 @@ public final class BookletMakerMobileFeature: ObservableObject {
             ? BookletLocalization.string("Sample PDF")
             : viewModel.currentDocument.url.lastPathComponent
     }
+
     public var pageCount: Int {
         workspace.selectedTool == .merge && !viewModel.mergeDocuments.isEmpty
             ? viewModel.mergePageCount
