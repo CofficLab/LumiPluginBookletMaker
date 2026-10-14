@@ -29,7 +29,9 @@ struct BookletMakerTestHostApp: App {
                         .onAppear {
                             // 激活放在 onAppear：此时布局已挂载，
                             // ActivityBar 的激活闭包能正确设置 Rail 可见性。
+                            
                             container.activatePlugin()
+                            container.seedMergeQueueIfRequested()
                         }
                 } else {
                     ProgressView()
@@ -59,6 +61,7 @@ final class TestHostContainer: ObservableObject {
     private var activityBar: (any ActivityBarProviding)?
     private var rail: (any RailViewProviding)?
     private var contentView: (any ContentViewProviding)?
+    private var hasSeededMergeQueue = false
 
     init() {
         Task { @MainActor in
@@ -131,5 +134,45 @@ final class TestHostContainer: ObservableObject {
     /// Rail 可见分类与可见 tab、宽度档位、工具栏标题，这些正是 UI 测试要验证的。
     func activatePlugin() {
         activityBar?.activateItem(id: "\(plugin.id).entry")
+    }
+
+    // MARK: - Test Fixtures
+
+    /// 按启动参数向合并队列注入测试文件。
+    ///
+    /// 由界面测试通过 `-SeedMergeQueue 3` 传入。合并队列无法经 NSOpenPanel
+    /// 填充（面板在 App 的 AX 树之外），因此改走插件的测试接缝。
+    ///
+    /// 必须等插件启动完成后再注入：插件在 `onBoot` 中才把 ViewModel 交给接缝，
+    /// 早一步调用会拿到空队列而被静默忽略。
+    func seedMergeQueueIfRequested() {
+        guard BookletMakerTestHooks.isEnabled else { return }
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flagIndex = arguments.firstIndex(of: "-SeedMergeQueue"),
+              flagIndex + 1 < arguments.count,
+              let count = Int(arguments[flagIndex + 1]),
+              count > 0
+        else { return }
+
+        // `onAppear` 在窗口生命周期内可能触发多次；只注入一次，否则每次都会
+        // 生成一批新的临时文件，去重逻辑无法识别它们是同一批，队列会翻倍。
+        guard !hasSeededMergeQueue else { return }
+        hasSeededMergeQueue = true
+
+        Task { @MainActor in
+            // 轮询等待插件启动：装配是异步的，而 onAppear 可能早于它完成。
+            for _ in 0 ..< 100 where !BookletMakerTestHooks.isReady {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            do {
+                let urls = try MergeQueueFixture.makePDFs(count: count)
+                await BookletMakerTestHooks.seedMergeQueue(urls)
+            } catch {
+                // 不使用 assertionFailure：宿主 App 的断言会直接终止进程，
+                // 让 XCUITest 报成「Lost connection to the application」，
+                // 掩盖真正的失败原因。这里只记日志，让测试自行断言队列状态。
+                NSLog("[testhost] 生成合并队列测试文件失败：%@", String(describing: error))
+            }
+        }
     }
 }

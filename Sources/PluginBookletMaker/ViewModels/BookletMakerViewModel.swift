@@ -46,6 +46,13 @@ final class BookletMakerViewModel: ObservableObject, SuperLog {
     private var mergeTask: Task<URL, Error>?
     private var thumbnailTask: Task<Void, Never>?
     private var loadRequestID = UUID()
+
+    /// 合并队列加载的独立请求标识。
+    ///
+    /// 与当前文档的加载各用各的标识：两者是并发的两条独立工作流
+    /// （用户可能在合并队列填充期间仍切换当前文档），共用一个标识会让
+    /// 后发起的一方把先发起的一方的结果整体作废。
+    private var mergeLoadRequestID = UUID()
     private var activeExportJobID: UUID?
     private var securityScopedURL: URL?
     private var mergeSecurityScopedURLs: [URL] = []
@@ -282,7 +289,7 @@ final class BookletMakerViewModel: ObservableObject, SuperLog {
             }
             : uniqueURLs
         let requestID = UUID()
-        loadRequestID = requestID
+        mergeLoadRequestID = requestID
         let scopedURLs = newURLs.filter { $0.startAccessingSecurityScopedResource() }
 
         do {
@@ -291,7 +298,7 @@ final class BookletMakerViewModel: ObservableObject, SuperLog {
                 let info = try await inspector.inspect(url)
                 items.append(PDFMergeItem(url: url, pageCount: info.pageCount))
             }
-            guard loadRequestID == requestID else {
+            guard mergeLoadRequestID == requestID else {
                 scopedURLs.forEach { $0.stopAccessingSecurityScopedResource() }
                 return
             }
@@ -306,7 +313,7 @@ final class BookletMakerViewModel: ObservableObject, SuperLog {
             Self.logger.info("\(Self.t)Loaded \(items.count) PDFs for merge")
         } catch {
             scopedURLs.forEach { $0.stopAccessingSecurityScopedResource() }
-            guard loadRequestID == requestID else { return }
+            guard mergeLoadRequestID == requestID else { return }
             if !appending {
                 mergeDocuments = []
             }

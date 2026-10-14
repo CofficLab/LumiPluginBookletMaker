@@ -56,6 +56,41 @@ class BookletMakerUITestCase: XCTestCase {
         }
     }
 
+    /// 等待前台就绪且工作区装配完成。
+    ///
+    /// 供需要自定义启动参数（如注入测试夹具）的场景复用。
+    func waitForForegroundAndWorkspace() {
+        waitForForeground()
+        waitForWorkspace()
+    }
+
+    /// 等待被测 App 成为前台应用；超时则明确失败。
+    ///
+    /// 与 `waitForForeground()` 的区别：这里把「等不到前台」当作失败抛出，
+    /// 而不是静默继续。注入测试夹具会让启动变慢，随后的点击若在 App 尚未
+    /// 到前台时发出，会得到「not foreground and does not allow background
+    /// interaction」这类难以定位的报错——提前失败并给出诊断更省事。
+    func waitForForegroundOrFail(
+        timeout: TimeInterval = 40,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline,
+              NSWorkspace.shared.frontmostApplication?.bundleIdentifier != Self.hostBundleID {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        guard NSWorkspace.shared.frontmostApplication?.bundleIdentifier == Self.hostBundleID else {
+            XCTFail(
+                "被测 App 未在 \(Int(timeout))s 内成为前台。"
+                    + "当前前台：\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "<none>")",
+                file: file,
+                line: line
+            )
+            return
+        }
+    }
+
     /// 等待插件工作区完成装配并激活。
     ///
     /// 以侧栏工具入口作为「装配完成」的信号：只有插件 `onBoot` 注册了
@@ -97,24 +132,38 @@ class BookletMakerUITestCase: XCTestCase {
 
     /// 点击工具入口，并等待切换后的目标视图出现。
     ///
-    /// 首击可能被 macOS 窗口激活竞态吞掉（只激活窗口不切换工具），
-    /// 因此未出现目标视图时重试一次。
-    func switchTool(_ identifier: String, expecting anchor: String, timeout: TimeInterval = 15) {
+    /// 两重稳健性处理：
+    /// 1. 首击可能被 macOS 窗口激活竞态吞掉（只激活窗口不切换工具），
+    ///    未出现目标视图时重试；
+    /// 2. 元素存在但不可点击时（App 尚未真正前台）先激活再重试——否则
+    ///    XCTest 直接报「not foreground and does not allow background
+    ///    interaction」并放弃，不会给我们重试机会。
+    func switchTool(_ identifier: String, expecting anchor: String, timeout: TimeInterval = 20) {
         let tool = element(identifier)
         XCTAssertTrue(
             tool.waitForExistence(timeout: timeout),
             "工具入口 \(identifier) 缺失。\(app.debugDescription)"
         )
-        tool.click()
 
         let target = element(anchor)
-        if !target.waitForExistence(timeout: 5) {
-            tool.click()
+        for attempt in 0 ..< 3 {
+            if attempt > 0 {
+                app.activate()
+                waitForForegroundOrFail()
+                Thread.sleep(forTimeInterval: 1.0)
+            }
+            if tool.isHittable {
+                tool.click()
+                if target.waitForExistence(timeout: 6) {
+                    return
+                }
+            } else {
+                app.activate()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
         }
-        XCTAssertTrue(
-            target.waitForExistence(timeout: timeout),
-            "切换到 \(identifier) 后未出现 \(anchor)。\(app.debugDescription)"
-        )
+
+        XCTFail("切换到 \(identifier) 后未出现 \(anchor)。\(app.debugDescription)")
     }
 
     /// 断言工具入口处于选中态。

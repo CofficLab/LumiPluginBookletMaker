@@ -8,3 +8,6 @@ Package.resolved
 
 # 覆盖率原始数据
 *.profraw
+
+# xcodebuild 产物
+*.xcresult

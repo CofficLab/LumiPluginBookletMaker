@@ -111,6 +111,11 @@ public final class BookletMakerPlugin: SuperPlugin, PluginDataMigrating, SuperLo
             .resolveProvider((any StorageProviding).self)?
             .pluginDataDirectory(for: id)
 
+        // 仅在宿主显式打开测试接缝时交出 ViewModel（默认关闭）。
+        if BookletMakerTestHooks.isEnabled {
+            BookletMakerTestHooks.viewModel = sharedViewModel
+        }
+
         if Self.verbose {
             Self.logger.info(
                 "\(Self.t)Booted, stagingDir = \(BookletMakerRuntimeBridge.directoryURL?.path ?? "<unavailable>")"
