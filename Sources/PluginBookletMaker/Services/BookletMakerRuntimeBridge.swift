@@ -50,6 +50,13 @@ public enum BookletMakerTestHooks {
         isEnabled && viewModel != nil
     }
 
+    /// 界面测试时面板的预选目录。
+    ///
+    /// 必须落在宿主自己的临时目录里，而不是 `NSTemporaryDirectory()`：宿主
+    /// 在测试模式下**不开沙盒**，系统临时目录会解析到用户可见位置，导出
+    /// 产物会直接掉进用户文件夹，而 XCUITest runner 有沙盒、无权清理。
+    nonisolated(unsafe) static var exportDirectoryURL: URL?
+
     /// 插件启动时把自己持有的 ViewModel 交出来，供测试注入队列。
     ///
     /// 与插件其余部分一样是插件级单例：rail 与内容区共享同一份配置状态，

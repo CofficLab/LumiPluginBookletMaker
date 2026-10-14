@@ -13,7 +13,8 @@ class BookletMakerUITestCase: XCTestCase {
     var app: XCUIApplication!
 
     /// 被测宿主 App 的 bundle id，用于等待其真正成为前台应用。
-    private static let hostBundleID = "com.coffic.bookletmaker.testhost"
+    /// 被测宿主 App 的 bundle id；等待前台、定位沙盒容器都要用。
+    static let hostBundleID = "com.coffic.bookletmaker.testhost"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -132,38 +133,131 @@ class BookletMakerUITestCase: XCTestCase {
 
     /// 点击工具入口，并等待切换后的目标视图出现。
     ///
-    /// 两重稳健性处理：
-    /// 1. 首击可能被 macOS 窗口激活竞态吞掉（只激活窗口不切换工具），
-    ///    未出现目标视图时重试；
-    /// 2. 元素存在但不可点击时（App 尚未真正前台）先激活再重试——否则
-    ///    XCTest 直接报「not foreground and does not allow background
-    ///    interaction」并放弃，不会给我们重试机会。
-    func switchTool(_ identifier: String, expecting anchor: String, timeout: TimeInterval = 20) {
+    /// 反复重试直到成功，因为两类瞬态都要靠重试化解：
+    /// 1. 首击可能被 macOS 窗口激活竞态吞掉（只激活窗口不切换工具）；
+    /// 2. App 尚未真正前台时，读取 `isHittable` 或 `click()` 本身就会抛
+    ///    「not foreground」或「no longer valid after interruption
+    ///    handling」——这是查询期异常而非返回 false，必须用 `try?` 兜住
+    ///    才有重试机会。
+    ///
+    /// 注意不要在循环里调用 `app.activate()`：激活动作会打断当前首次响应者，
+    /// 反而让已打开的系统面板被收起。
+    func switchTool(
+        _ identifier: String,
+        expecting anchor: String,
+        timeout: TimeInterval = 25,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         let tool = element(identifier)
-        XCTAssertTrue(
-            tool.waitForExistence(timeout: timeout),
-            "工具入口 \(identifier) 缺失。\(app.debugDescription)"
-        )
-
         let target = element(anchor)
-        for attempt in 0 ..< 3 {
-            if attempt > 0 {
-                app.activate()
-                waitForForegroundOrFail()
-                Thread.sleep(forTimeInterval: 1.0)
-            }
-            if tool.isHittable {
-                tool.click()
-                if target.waitForExistence(timeout: 6) {
-                    return
-                }
-            } else {
-                app.activate()
-                Thread.sleep(forTimeInterval: 0.5)
-            }
+
+        guard tool.waitForExistence(timeout: timeout) else {
+            XCTFail(
+                "工具入口 \(identifier) 缺失。\(app.debugDescription)",
+                file: file, line: line
+            )
+            return
         }
 
-        XCTFail("切换到 \(identifier) 后未出现 \(anchor)。\(app.debugDescription)")
+        let deadline = Date().addingTimeInterval(timeout)
+        var lastError: Error?
+        while Date() < deadline {
+            do {
+                try tool.click()
+                if target.waitForExistence(timeout: 6) { return }
+            } catch {
+                // 元素在点击瞬间失效（焦点切换等）：记下来，稍后重试。
+                lastError = error
+            }
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+
+        let reason = lastError.map { "最后一次失败：\($0.localizedDescription)" } ?? ""
+        XCTFail(
+            "切换到 \(identifier) 后未出现 \(anchor)。\(reason)\(app.debugDescription)",
+            file: file, line: line
+        )
+    }
+
+    /// 在模态面板（系统保存/选择面板）打开期间点击底层界面元素。
+    ///
+    /// `runModal()` 打开的系统面板会让 XCUITest 的事件路由停在
+    /// "Handler claimed to have handled ... but it's still interrupting"：
+    /// 它认为点击已被面板消费，却仍把事件判给下层控件。这类面板没有可靠的
+    /// API 去解除，只能等它自己关闭。因此这里轮询等待面板消失，再交给调用方。
+    ///
+    /// - Returns: 是否在超时前成功等到面板关闭。
+    @discardableResult
+    func waitForModalPanelToClose(timeout: TimeInterval = 20) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if app.dialogs.count == 0 { return true }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return app.dialogs.count == 0
+    }
+
+    /// 点击保存后可能出现的「替换现有文件」确认框。
+    ///
+    /// `NSSavePanel` 在目标文件已存在时，会在面板之上再叠一个确认 sheet，
+    /// 提供 Replace / Skip 两个按钮（AX 上分别为 `action-button-1` /
+    /// `action-button-2`）。它出现在**面板内部**而非独立窗口，且没有可读
+    /// 标题，因此只能按 `sheet` 的存在性与按钮 identifier 识别。
+    ///
+    /// 这里等到该 sheet 出现后点第一个按钮（Replace），并等面板真正关闭。
+    /// 没有已存在文件时该 sheet 不会出现，属于正常路径。
+    func confirmReplaceIfPresent(timeout: TimeInterval = 10) {
+        let sheet = app.sheets.firstMatch
+        guard sheet.waitForExistence(timeout: timeout) else { return }
+
+        // 第一个按钮是「替换」，第二个是「跳过」。
+        let replace = sheet.buttons["action-button-1"]
+        guard replace.waitForExistence(timeout: 5) else { return }
+        replace.click()
+    }
+
+    /// 点击元素并等待它进入指定状态，失败则重试。
+    ///
+    /// 用于「点击后状态才变化」的控件：切分点、纸张选项等。首击可能被窗口
+    /// 激活竞态吞掉，重试即可；不重试则会把偶发失败误判成缺陷。
+    ///
+    /// 每次尝试都重新查询元素：系统面板关闭后，旧的 `XCUIElement` 会因为
+    /// 底层快照过期而读到陈旧的值——曾出现「实际值就是 selected 却仍报失败」。
+    func clickAndWaitForValue(
+        _ identifier: String,
+        _ expected: String,
+        timeout: TimeInterval = 20,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let deadline = Date().addingTimeInterval(timeout)
+        var clicked = false
+        var lastSeen: String?
+
+        while Date() < deadline {
+            let current = element(identifier)
+            if current.exists {
+                let value = (current.value as? String) ?? current.label
+                lastSeen = value
+                if value == expected { return }
+
+                if !clicked {
+                    do {
+                        try current.click()
+                        clicked = true
+                    } catch {
+                        clicked = false
+                    }
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+
+        XCTFail(
+            "点击 \(identifier) 后未进入状态 \(expected)，最后读到 \(lastSeen ?? "<无值>")。\(app.debugDescription)",
+            file: file, line: line
+        )
     }
 
     /// 断言工具入口处于选中态。

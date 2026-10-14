@@ -114,6 +114,7 @@ public final class BookletMakerPlugin: SuperPlugin, PluginDataMigrating, SuperLo
         // 仅在宿主显式打开测试接缝时交出 ViewModel（默认关闭）。
         if BookletMakerTestHooks.isEnabled {
             BookletMakerTestHooks.viewModel = sharedViewModel
+            BookletMakerTestHooks.exportDirectoryURL = makeTestExportDirectory()
         }
 
         if Self.verbose {
@@ -211,10 +212,28 @@ public final class BookletMakerPlugin: SuperPlugin, PluginDataMigrating, SuperLo
             panel.nameFieldStringValue = suggestedFileName()
             panel.canCreateDirectories = true
             panel.title = BookletLocalization.string("Export Booklet PDF")
+            // 界面测试时把保存位置预选到宿主自己的临时目录：宿主未开沙盒，
+            // 否则产物会直接落进用户的「文稿」目录，而 XCUITest runner 有
+            // 沙盒、事后也清理不掉。
+            if let testDirectory = BookletMakerTestHooks.exportDirectoryURL {
+                panel.directoryURL = testDirectory
+            }
             if panel.runModal() == .OK, let url = panel.url {
                 Task { await sharedViewModel.export(to: url) }
             }
         #endif
+    }
+
+    /// 界面测试专用的导出目录。
+    ///
+    /// 放在插件数据目录之下，而非系统临时目录：宿主在测试模式下不开沙盒，
+    /// 系统临时目录会解析到用户可见位置，导出产物会直接掉进用户文件夹，
+    /// 而 XCUITest runner 有沙盒、事后也清理不掉。
+    private func makeTestExportDirectory() -> URL? {
+        let base = BookletMakerRuntimeBridge.directoryURL ?? FileManager.default.temporaryDirectory
+        let directory = base.appendingPathComponent("ui-test-export", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func suggestedFileName() -> String {
@@ -234,6 +253,11 @@ public final class BookletMakerPlugin: SuperPlugin, PluginDataMigrating, SuperLo
             panel.canChooseDirectories = true
             panel.canCreateDirectories = true
             panel.allowsMultipleSelection = false
+            // 与保存面板同理：界面测试时把输出目录预选到临时目录，
+            // 避免往用户目录里写测试产物。
+            if let testDirectory = BookletMakerTestHooks.exportDirectoryURL {
+                panel.directoryURL = testDirectory
+            }
 
             if panel.runModal() == .OK, let directoryURL = panel.url {
                 let didStartSecurityScope = directoryURL.startAccessingSecurityScopedResource()

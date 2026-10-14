@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		08BE7FC6D1306D43AD9938BE /* ProviderStorage in Frameworks */ = {isa = PBXBuildFile; productRef = DF972B28023BDF686995F69B /* ProviderStorage */; };
 		25640B1FE45B2C52F7D185CA /* PluginBookletMaker in Frameworks */ = {isa = PBXBuildFile; productRef = 73002E0B07A13AB03B4347B9 /* PluginBookletMaker */; };
+		2D41C657CE9D82F1E04F35FC /* BookletMakerExportPanelUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4E9A19CDB3105622C8B5AC /* BookletMakerExportPanelUITests.swift */; };
 		2E16C72377049C88EB981D88 /* TestHostRootLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CAE47A46F54A478BD92EF7 /* TestHostRootLayout.swift */; };
 		31824A4925E0AD670C85F30C /* LumiLocalizationKit in Frameworks */ = {isa = PBXBuildFile; productRef = D8E7A05F9A808740D392259B /* LumiLocalizationKit */; };
 		33D7E9F25A36D8872EEC2558 /* LumiUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4B219F95A403D500B84927FC /* LumiUI */; };
@@ -52,6 +53,7 @@
 		31CAE47A46F54A478BD92EF7 /* TestHostRootLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHostRootLayout.swift; sourceTree = "<group>"; };
 		3F8D50415B963D1260CB99CC /* BookletMakerUITestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerUITestCase.swift; sourceTree = "<group>"; };
 		5F65CDB9515D384E68BE332A /* BookletMakerBookletUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerBookletUITests.swift; sourceTree = "<group>"; };
+		6B4E9A19CDB3105622C8B5AC /* BookletMakerExportPanelUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookletMakerExportPanelUITests.swift; sourceTree = "<group>"; };
 		A4C8EBCCCCBEFFCE2BEB3479 /* MergeQueueFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeQueueFixture.swift; sourceTree = "<group>"; };
 		CAA85E60323F290082361ED7 /* BookletMakerTestHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BookletMakerTestHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC9FF72FEF6771781795C97E /* BookletMakerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookletMakerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -109,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				5F65CDB9515D384E68BE332A /* BookletMakerBookletUITests.swift */,
+				6B4E9A19CDB3105622C8B5AC /* BookletMakerExportPanelUITests.swift */,
 				1A69282C95CC7C787E1B2CCC /* BookletMakerLocalizationUITests.swift */,
 				115B8A2057F8A7F67D8FB72D /* BookletMakerMergeQueueUITests.swift */,
 				EC9C4960BD0B5F47B85311D8 /* BookletMakerMergeUITests.swift */,
@@ -248,6 +251,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				424A2DB08BAAE48A3F89BA45 /* BookletMakerBookletUITests.swift in Sources */,
+				2D41C657CE9D82F1E04F35FC /* BookletMakerExportPanelUITests.swift in Sources */,
 				F26869F9068BA83144767BBF /* BookletMakerLocalizationUITests.swift in Sources */,
 				FC64FC7C481BBB0D429CDEDF /* BookletMakerMergeQueueUITests.swift in Sources */,
 				E1AEDC47FDBD5DC0FFF2D176 /* BookletMakerMergeUITests.swift in Sources */,

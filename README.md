@@ -93,7 +93,7 @@ swift test
 |---|---|---|---|
 | 领域层 | `Tests/BookletMakerCoreTests` | swift-testing `@Suite` | `swift test` |
 | 插件层 | `Tests/PluginBookletMakerTests` | 115 项 XCTest | `swift test` |
-| 界面层 | `BookletMakerUITestHost/UITests` | 26 项 XCUITest | `xcodebuild test` |
+| 界面层 | `BookletMakerUITestHost/UITests` | 40 项 XCUITest | `xcodebuild test` |
 
 ### 单元测试
 
@@ -135,6 +135,8 @@ xcodebuild test \
 | `BookletMakerBookletUITests` | 四个预览阶段切换、装订前纸张列表、纸张/版式/滑块/开关交互、补白开关在书本折叠版式下强制禁用、锚点跨语言稳定 |
 | `BookletMakerSplitUITests` | 切分点选中与反选、多切分点独立、导出门控随有效性翻转、页面点击与侧栏输入两条路径等价、非法输入校验、分段重命名 |
 | `BookletMakerMergeUITests` | 空队列与导出禁用、汇总如实反映队列规模、与小册子设置互斥 |
+| `BookletMakerMergeQueueUITests` | 队列注入后的排序（双向）、边界按钮禁用、删除、导出门控变化、删空回到空态 |
+| `BookletMakerExportPanelUITests` | 三个工具的导出面板、保存/取消、替换确认、面板关闭后界面恢复 |
 | `BookletMakerToolSwitchUITests` | 三工具切换后侧栏设置与主按钮文案同步 |
 | `BookletMakerLocalizationUITests` | en / zh-Hans / zh-Hant 文案，以及切换语言后锚点结构不变 |
 
@@ -145,6 +147,28 @@ xcodebuild test \
    正是为了验证文案本身。
 2. **断言状态而非存在性**：元素存在只说明渲染了，真正要校验的是选中态、
    启用态、门控原因。
+
+#### 系统面板（保存 / 选择文件夹）在 XCUITest 里的形态
+
+导出用 `NSSavePanel.runModal()` / `NSOpenPanel.runModal()`，实测有几个反直觉之处：
+
+| 现象 | 正确做法 |
+|---|---|
+| 面板挂在 `app.dialogs` 下，**不是** `app.sheets`，也不是 `app.windows` | `app.dialogs.matching(identifier:)` |
+| 面板标题不暴露给 XCUITest（`label` 为空、无 StaticText 子节点） | 改用 identifier 区分：`save-panel` / `open-panel` |
+| 两种面板的确认按钮都叫 `OKButton` | 不能靠它区分面板类型 |
+| 目标文件已存在时叠一个「是否替换」的 sheet | `confirmReplaceIfPresent()`，按钮为 `action-button-1` |
+| 面板打开期间查询下层界面报 `still interrupting` | `waitForModalPanelToClose()` 后再断言 |
+
+此外：测试宿主**不开沙盒**，而 XCUITest runner 自带沙盒且与宿主进程隔离。
+因此导出产物写在宿主指定的目录里，runner 既读不到也清理不掉——测试模式
+下宿主会把面板预选到自己的临时目录，避免往用户文件夹里丢文件。
+
+#### 关于导出产物的校验
+
+界面测试**不**断言导出文件的内容：产物确实被正确写出，但 runner 无权读取，
+且产物正确性（页数、分段、文件名）由 `BookletMakerViewModelTests` 覆盖。
+界面测试只负责「交互链路完整走通」。
 
 #### 一个容易踩的坑
 
