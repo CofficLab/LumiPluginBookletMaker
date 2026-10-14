@@ -75,7 +75,7 @@ public final class BookletMakerMobileFeature: ObservableObject {
                 Int64(viewModel.mergeDocuments.count)
             )
         }
-        viewModel.currentDocument.isDemo
+        return viewModel.currentDocument.isDemo
             ? BookletLocalization.string("Sample PDF")
             : viewModel.currentDocument.url.lastPathComponent
     }
