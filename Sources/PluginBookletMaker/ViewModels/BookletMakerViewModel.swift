@@ -177,7 +177,8 @@ final class BookletMakerViewModel: ObservableObject, SuperLog {
 
     var splitValidationMessage: String? {
         guard case .failure(let error) = splitCutPointsResult else { return nil }
-        return error.errorDescription
+        // BookletMakerCore 不持有本地化资源，由界面层按结构化 payload 重新组装文案。
+        return BookletLocalization.string(for: error)
     }
 
     var splitFileNameValidationMessage: String? {
