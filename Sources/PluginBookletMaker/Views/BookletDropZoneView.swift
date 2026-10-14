@@ -87,6 +87,9 @@ struct BookletDropZoneView: View {
                 .foregroundStyle(theme.textTertiary)
         }
         .contentShape(Rectangle())
+        .accessibilityIdentifier(
+            viewModel.selectedTool == .merge ? "merge.dropZone" : "workspace.dropZone"
+        )
         .onTapGesture {
             selectPDFFile()
         }

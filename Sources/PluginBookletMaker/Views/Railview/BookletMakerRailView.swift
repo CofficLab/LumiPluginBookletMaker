@@ -86,6 +86,7 @@ struct BookletMakerRailView: View {
                     }
                     .foregroundStyle(theme.textPrimary)
                 }
+                .accessibilityIdentifier("overview.\(tool.id)Tool")
             }
         }
     }
@@ -233,8 +234,10 @@ struct BookletMakerRailView: View {
                         Text(BookletLocalization.string("Select at least two PDF files to merge."))
                             .font(DesignTokens.Typography.caption1)
                             .foregroundStyle(theme.textSecondary)
+                            .accessibilityIdentifier("merge.insufficientHint")
                     }
                 }
+                .accessibilityIdentifier("merge.settingsCard")
             }
         }
     }
@@ -254,6 +257,7 @@ struct BookletMakerRailView: View {
             action: primaryActionHandler
         )
         .disabled(!viewModel.isBusy && !viewModel.canExport)
+        .accessibilityIdentifier("workspace.primaryAction")
     }
 
     private var primaryActionTitle: String {

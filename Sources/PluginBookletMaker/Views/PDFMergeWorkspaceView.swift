@@ -12,6 +12,7 @@ struct PDFMergeWorkspaceView: View {
             } description: {
                 Text(BookletLocalization.string("Choose or drop at least two PDF files to begin."))
             }
+            .accessibilityIdentifier("merge.emptyState")
         } else {
             List {
                 ForEach(Array(viewModel.mergeDocuments.enumerated()), id: \.element.id) { index, item in
@@ -32,6 +33,8 @@ struct PDFMergeWorkspaceView: View {
                         Spacer()
                     }
                     .padding(.vertical, 4)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("merge.file.\(item.id.uuidString)")
                     .contextMenu {
                         Button(BookletLocalization.string("Move up"), systemImage: "chevron.up") {
                             viewModel.moveMergeDocument(item, offsetBy: -1)
@@ -50,6 +53,7 @@ struct PDFMergeWorkspaceView: View {
                     viewModel.moveMergeDocuments(from: offsets, to: destination)
                 }
             }
+            .accessibilityIdentifier("merge.fileList")
         }
     }
 
@@ -76,6 +80,7 @@ struct PDFMergeWorkspaceView: View {
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("merge.summary")
             }
             .padding()
 

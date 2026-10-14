@@ -22,6 +22,8 @@ struct PDFMergeMobileView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("merge.file.\(item.id.uuidString)")
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 viewModel.removeMergeDocument(item)
@@ -37,6 +39,7 @@ struct PDFMergeMobileView: View {
                     Text(BookletLocalization.string("Merge order"))
                 }
             }
+            .accessibilityIdentifier("merge.fileList")
             .environment(\.editMode, .constant(.active))
 
             Divider()
@@ -48,17 +51,20 @@ struct PDFMergeMobileView: View {
                 ))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("merge.summary")
 
                 HStack(spacing: 12) {
                     Button(action: onOpenPDF) {
                         Label(BookletLocalization.string("Add PDFs"), systemImage: "plus")
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("merge.addPDFs")
                     Button(action: onExport) {
                         Label(BookletLocalization.string("Merge"), systemImage: "arrow.triangle.merge")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!viewModel.canExportMerge)
+                    .accessibilityIdentifier("merge.export")
                 }
             }
             .padding(.horizontal, 16)
