@@ -84,3 +84,29 @@ BookletMakerPlugin(
 swift build
 swift test
 ```
+
+## Testing
+
+The package ships two test targets, matching the two products:
+
+| Test target | Scope | Framework |
+|---|---|---|
+| `BookletMakerCoreTests` | Layout engine, paper / settings / split plans — pure domain logic | swift-testing (`@Suite` / `@Test`) |
+| `PluginBookletMakerTests` | Plugin assembly, view model, PDF services, mobile workspace | XCTest |
+
+The `BookletMakerCoreTests` target covers the imposition engine, paper size and
+layout-mode models, booklet settings, and the split-plan parser. The
+`PluginBookletMakerTests` target covers `BookletMakerPlugin` registration
+(rail, content, docs, toolbar, activity bar, storage bridge), the view model,
+the PDF inspector / merger / splitter, the demo PDF provider, and the
+thumbnailer.
+
+Run with code coverage:
+
+```sh
+swift test --enable-code-coverage
+```
+
+UI tests live in the host app — see `BookletMakerUITests` in the GameFactory
+workspace. They are not part of this SPM package because UI testing requires a
+host app target and an Xcode test runner.

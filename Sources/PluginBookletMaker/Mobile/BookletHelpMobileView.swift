@@ -36,25 +36,21 @@ struct BookletHelpMobileView: View {
     }
 
     private var helpBookletText: String {
+        // key 必须是完整的单行字面量：字符串拼接会拆成多个片段 key，导致整句查不到翻译。
         BookletLocalization.string(
-            "Open a PDF, choose Booklet, and the pages are reordered so "
-            + "two printed sides become one folded sheet. Pick your paper, "
-            + "review the print sides, then export and share the result."
+            "Open a PDF, choose Booklet, and the pages are reordered so two printed sides become one folded sheet. Pick your paper, review the print sides, then export and share the result."
         )
     }
 
     private var helpSplitText: String {
         BookletLocalization.string(
-            "Open a PDF, choose Split PDF, and tap between pages to mark "
-            + "where the file should break. Name each part, then export "
-            + "and share the resulting PDFs."
+            "Open a PDF, choose Split PDF, and tap between pages to mark where the file should break. Name each part, then export and share the resulting PDFs."
         )
     }
 
     private var privacyText: String {
         BookletLocalization.string(
-            "BookletMaker processes every document locally on your device. "
-            + "No file content is uploaded or stored on any server."
+            "BookletMaker processes every document locally on your device. No file content is uploaded or stored on any server."
         )
     }
 

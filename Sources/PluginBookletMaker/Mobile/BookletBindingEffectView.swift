@@ -159,15 +159,14 @@ struct BookletBindingEffectView: View {
 
     private var explanationText: String {
         switch viewModel.settings.layout {
+        // key 必须是完整的单行字面量：字符串拼接会拆成多个片段 key，导致整句查不到翻译。
         case .bookletFold, .signatureFold:
             return BookletLocalization.string(
-                "Two source pages share one physical sheet, front and back. "
-                + "Fold the sheet along the centre line and read pages in order."
+                "Two source pages share one physical sheet, front and back. Fold the sheet along the centre line and read pages in order."
             )
         case .simplePair:
             return BookletLocalization.string(
-                "Two source pages are printed side by side on one sheet "
-                + "without folding."
+                "Two source pages are printed side by side on one sheet without folding."
             )
         }
     }

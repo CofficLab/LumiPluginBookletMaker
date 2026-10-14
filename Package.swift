@@ -60,8 +60,12 @@ let package = Package(
                 "PluginBookletMaker",
                 .product(name: "KernelCore", package: "LumiKernel"),
                 .product(name: "ProviderActivityBar", package: "LumiProviders"),
+                .product(name: "ProviderContentView", package: "LumiProviders"),
+                .product(name: "ProviderDocsView", package: "LumiProviders"),
                 .product(name: "ProviderRailView", package: "LumiProviders"),
                 .product(name: "ProviderRootView", package: "LumiProviders"),
+                .product(name: "ProviderStorage", package: "LumiProviders"),
+                .product(name: "ProviderToolbar", package: "LumiProviders"),
             ],
             path: "Tests/PluginBookletMakerTests"
         ),
