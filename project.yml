@@ -1,0 +1,87 @@
+name: BookletMakerUITests
+options:
+  bundleIdPrefix: com.coffic
+  deploymentTarget:
+    macOS: "14.0"
+  groupSortPosition: top
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    MACOSX_DEPLOYMENT_TARGET: '14.0'
+    CODE_SIGN_IDENTITY: '-'
+    CODE_SIGNING_REQUIRED: 'YES'
+    CODE_SIGNING_ALLOWED: 'YES'
+
+targets:
+  BookletMakerTestHost:
+    type: application
+    platform: macOS
+    sources:
+      - path: BookletMakerUITestHost/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.coffic.bookletmaker.testhost
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Coffic Lab. All rights reserved."
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.developer-tools"
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: LumiPluginBookletMaker
+        product: PluginBookletMaker
+      - package: LumiPluginBookletMaker
+        product: BookletMakerCore
+      - package: LumiKernel
+        product: KernelCore
+      - package: LumiProviders
+        product: ProviderActivityBar
+      - package: LumiProviders
+        product: ProviderRailView
+      - package: LumiProviders
+        product: ProviderRootView
+      - package: LumiProviders
+        product: ProviderContentView
+      - package: LumiProviders
+        product: ProviderToolbar
+      - package: LumiProviders
+        product: ProviderStorage
+      - package: LumiProviders
+        product: ProviderDocsView
+      - package: LumiUI
+        product: LumiUI
+      - package: LumiLogging
+        product: LumiLoggingKit
+      - package: LumiLocalization
+        product: LumiLocalizationKit
+
+  BookletMakerUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: BookletMakerUITestHost/UITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.coffic.bookletmaker.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: BookletMakerTestHost
+
+packages:
+  LumiPluginBookletMaker:
+    path: .
+  LumiKernel:
+    url: https://github.com/CofficLab/LumiKernel.git
+    from: 1.0.0
+  LumiProviders:
+    url: https://github.com/CofficLab/LumiProviders.git
+    from: 1.9.0
+  LumiUI:
+    url: https://github.com/CofficLab/LumiUI.git
+    from: 1.10.0
+  LumiLogging:
+    url: https://github.com/CofficLab/LumiLogging.git
+    from: 1.0.1
+  LumiLocalization:
+    url: https://github.com/CofficLab/LumiLocalization.git
+    from: 1.0.1
