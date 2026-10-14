@@ -4,6 +4,55 @@ import SwiftUI
 struct PDFMergeWorkspaceView: View {
     @ObservedObject var viewModel: BookletMakerViewModel
 
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.mergeDocuments.isEmpty {
+            ContentUnavailableView {
+                Label(BookletLocalization.string("No PDF files selected"), systemImage: "doc.badge.plus")
+            } description: {
+                Text(BookletLocalization.string("Choose or drop at least two PDF files to begin."))
+            }
+        } else {
+            List {
+                ForEach(Array(viewModel.mergeDocuments.enumerated()), id: \.element.id) { index, item in
+                    HStack(spacing: 12) {
+                        Text("\(index + 1)")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24)
+                        Image(systemName: "doc.fill")
+                            .foregroundStyle(Color.accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.url.lastPathComponent)
+                                .lineLimit(1)
+                            Text(BookletLocalization.string("%lld pages", Int64(item.pageCount)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    .contextMenu {
+                        Button(BookletLocalization.string("Move up"), systemImage: "chevron.up") {
+                            viewModel.moveMergeDocument(item, offsetBy: -1)
+                        }
+                        .disabled(index == 0)
+                        Button(BookletLocalization.string("Move down"), systemImage: "chevron.down") {
+                            viewModel.moveMergeDocument(item, offsetBy: 1)
+                        }
+                        .disabled(index == viewModel.mergeDocuments.count - 1)
+                        Button(BookletLocalization.string("Remove"), systemImage: "trash", role: .destructive) {
+                            viewModel.removeMergeDocument(item)
+                        }
+                    }
+                }
+                .onMove { offsets, destination in
+                    viewModel.moveMergeDocuments(from: offsets, to: destination)
+                }
+            }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -32,52 +81,9 @@ struct PDFMergeWorkspaceView: View {
 
             Divider()
 
-            if viewModel.mergeDocuments.isEmpty {
-                ContentUnavailableView {
-                    Label(BookletLocalization.string("No PDF files selected"), systemImage: "doc.badge.plus")
-                } description: {
-                    Text(BookletLocalization.string("Choose or drop at least two PDF files to begin."))
-                }
-            } else {
-                List {
-                    ForEach(Array(viewModel.mergeDocuments.enumerated()), id: \.element.id) { index, item in
-                        HStack(spacing: 12) {
-                            Text("\(index + 1)")
-                                .font(.subheadline.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 24)
-                            Image(systemName: "doc.fill")
-                                .foregroundStyle(Color.accentColor)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.url.lastPathComponent)
-                                    .lineLimit(1)
-                                Text(BookletLocalization.string("%lld pages", Int64(item.pageCount)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-                        .contextMenu {
-                            Button(BookletLocalization.string("Move up"), systemImage: "chevron.up") {
-                                viewModel.moveMergeDocument(item, offsetBy: -1)
-                            }
-                            .disabled(index == 0)
-                            Button(BookletLocalization.string("Move down"), systemImage: "chevron.down") {
-                                viewModel.moveMergeDocument(item, offsetBy: 1)
-                            }
-                            .disabled(index == viewModel.mergeDocuments.count - 1)
-                            Button(BookletLocalization.string("Remove"), systemImage: "trash", role: .destructive) {
-                                viewModel.removeMergeDocument(item)
-                            }
-                        }
-                    }
-                    .onMove { offsets, destination in
-                        viewModel.moveMergeDocuments(from: offsets, to: destination)
-                    }
-                }
-            }
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
