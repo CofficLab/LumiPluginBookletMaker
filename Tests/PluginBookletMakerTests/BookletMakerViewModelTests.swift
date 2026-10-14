@@ -62,6 +62,31 @@ private final class ControlledSplitter: PDFSplitting {
     }
 }
 
+/// A merger stub with the same controlled-completion semantics as the
+/// renderer and splitter stubs above.
+@MainActor
+private final class ControlledMerger: PDFMerging {
+    struct Call {
+        let sourceURLs: [URL]
+        let outputURL: URL
+        let progress: @Sendable (Double) -> Void
+    }
+
+    private(set) var calls: [Call] = []
+    var onMerge: ((Call) async throws -> URL)?
+
+    func merge(sourceURLs: [URL],
+               outputURL: URL,
+               progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
+        let call = Call(sourceURLs: sourceURLs, outputURL: outputURL, progress: progress)
+        calls.append(call)
+        guard let onMerge else {
+            throw PDFMerger.MergeError.tooFewSources
+        }
+        return try await onMerge(call)
+    }
+}
+
 // MARK: - View Model Tests
 
 @MainActor
@@ -349,6 +374,461 @@ final class BookletMakerViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.lastSplitOutputURLs[0].path.hasPrefix(directoryB.path))
         XCTAssertFalse(viewModel.isRendering)
         XCTAssertNil(viewModel.errorMessage)
+    }
+
+    // MARK: - Merge queue
+
+    func testMergeQueueStartsEmptyAndCannotExport() {
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+
+        XCTAssertTrue(viewModel.mergeDocuments.isEmpty)
+        XCTAssertEqual(viewModel.mergePageCount, 0)
+        XCTAssertFalse(viewModel.canExportMerge)
+        XCTAssertFalse(viewModel.canExport)
+    }
+
+    func testLoadingMergePDFsRecordsOrderAndPageCounts() async throws {
+        let first = try makeSourcePDF(pageCount: 3)
+        let second = try makeSourcePDF(pageCount: 5)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [first, second])
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.pageCount), [3, 5])
+        XCTAssertEqual(viewModel.mergePageCount, 8)
+        XCTAssertTrue(viewModel.canExportMerge)
+        XCTAssertTrue(viewModel.canExport)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func testSingleQueuedFileCannotExport() async throws {
+        let only = try makeSourcePDF(pageCount: 2)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer { try? FileManager.default.removeItem(at: only) }
+
+        await viewModel.loadMergePDFs([only])
+
+        XCTAssertEqual(viewModel.mergeDocuments.count, 1)
+        XCTAssertFalse(viewModel.canExportMerge, "Merging needs at least two sources")
+    }
+
+    func testAppendingKeepsExistingOrderAndAppendsNewFiles() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 2)
+        let third = try makeSourcePDF(pageCount: 4)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: third)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        await viewModel.loadMergePDFs([third], appending: true)
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [first, second, third])
+        XCTAssertEqual(viewModel.mergePageCount, 7)
+    }
+
+    func testReloadingWithoutAppendingReplacesTheQueue() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 2)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        await viewModel.loadMergePDFs([second])
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [second])
+        XCTAssertEqual(viewModel.mergePageCount, 2)
+    }
+
+    func testDuplicateAndNonPDFSourcesAreIgnored() async throws {
+        let valid = try makeSourcePDF(pageCount: 2)
+        let other = try makeSourcePDF(pageCount: 1)
+        let textFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("notes-\(UUID().uuidString).txt")
+        try Data("notes".utf8).write(to: textFile, options: .atomic)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: valid)
+            try? FileManager.default.removeItem(at: other)
+            try? FileManager.default.removeItem(at: textFile)
+        }
+
+        await viewModel.loadMergePDFs([valid, valid, other, textFile])
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [valid, other])
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func testFailedMergeLoadClearsQueueAndSurfacesError() async throws {
+        let valid = try makeSourcePDF(pageCount: 2)
+        let missing = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gone-\(UUID().uuidString).pdf")
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer { try? FileManager.default.removeItem(at: valid) }
+
+        await viewModel.loadMergePDFs([valid, missing])
+
+        XCTAssertTrue(viewModel.mergeDocuments.isEmpty)
+        XCTAssertEqual(viewModel.mergePageCount, 0)
+        XCTAssertFalse(viewModel.canExportMerge)
+        XCTAssertNotNil(viewModel.errorMessage)
+    }
+
+    func testFailedAppendPreservesTheExistingQueue() async throws {
+        let valid = try makeSourcePDF(pageCount: 2)
+        let other = try makeSourcePDF(pageCount: 1)
+        let missing = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gone-\(UUID().uuidString).pdf")
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: valid)
+            try? FileManager.default.removeItem(at: other)
+        }
+
+        await viewModel.loadMergePDFs([valid, other])
+        await viewModel.loadMergePDFs([missing], appending: true)
+
+        XCTAssertEqual(
+            viewModel.mergeDocuments.map(\.url),
+            [valid, other],
+            "A failed append must not drop what is already queued"
+        )
+        XCTAssertNotNil(viewModel.errorMessage)
+    }
+
+    // MARK: - Merge queue editing
+
+    func testRemovingAMergeDocumentUpdatesCountsAndClearsOutput() async throws {
+        let first = try makeSourcePDF(pageCount: 3)
+        let second = try makeSourcePDF(pageCount: 5)
+        let third = try makeSourcePDF(pageCount: 1)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: third)
+        }
+
+        await viewModel.loadMergePDFs([first, second, third])
+        viewModel.removeMergeDocument(viewModel.mergeDocuments[1])
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [first, third])
+        XCTAssertEqual(viewModel.mergePageCount, 4)
+        XCTAssertNil(viewModel.lastMergeOutputURL)
+    }
+
+    func testMoveMergeDocumentSwapsPositions() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 2)
+        let third = try makeSourcePDF(pageCount: 3)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: third)
+        }
+
+        await viewModel.loadMergePDFs([first, second, third])
+
+        viewModel.moveMergeDocument(viewModel.mergeDocuments[2], offsetBy: -1)
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [first, third, second])
+
+        viewModel.moveMergeDocument(viewModel.mergeDocuments[0], offsetBy: 1)
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [third, first, second])
+    }
+
+    func testMoveMergeDocumentIgnoresOutOfBoundsOffsets() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 2)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        let before = viewModel.mergeDocuments
+
+        // First item cannot move up; last item cannot move down.
+        viewModel.moveMergeDocument(before[0], offsetBy: -1)
+        viewModel.moveMergeDocument(before[1], offsetBy: 1)
+        // An unknown item is a no-op rather than a crash.
+        viewModel.moveMergeDocument(
+            PDFMergeItem(url: URL(fileURLWithPath: "/tmp/unknown.pdf"), pageCount: 1),
+            offsetBy: -1
+        )
+
+        XCTAssertEqual(viewModel.mergeDocuments.map(\.url), [first, second])
+    }
+
+    func testMoveMergeDocumentsReordersTheWholeQueue() async throws {
+        let sources = try (0 ..< 4).map { _ in try makeSourcePDF(pageCount: 1) }
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer { sources.forEach { try? FileManager.default.removeItem(at: $0) } }
+
+        await viewModel.loadMergePDFs(sources)
+        // Drag the last item to the front.
+        viewModel.moveMergeDocuments(from: IndexSet(integer: 3), to: 0)
+
+        XCTAssertEqual(
+            viewModel.mergeDocuments.map(\.url),
+            [sources[3], sources[0], sources[1], sources[2]]
+        )
+    }
+
+    // MARK: - Merge export
+
+    func testExportMergeWritesCombinedPDFInQueueOrder() async throws {
+        let first = try makeSourcePDF(pageCount: 2)
+        let second = try makeSourcePDF(pageCount: 3)
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-view-model-\(UUID().uuidString).pdf")
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        await viewModel.exportMerge(to: outputURL)
+
+        let output = try XCTUnwrap(PDFDocument(url: outputURL))
+        XCTAssertEqual(output.pageCount, 5)
+        XCTAssertEqual(viewModel.lastMergeOutputURL, outputURL)
+        XCTAssertEqual(viewModel.progress, 1)
+        XCTAssertFalse(viewModel.isRendering)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func testExportMergePassesQueueOrderToTheMerger() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 1)
+        let merger = ControlledMerger()
+        merger.onMerge = { $0.outputURL }
+        let viewModel = BookletMakerViewModel(merger: merger)
+        viewModel.selectedTool = .merge
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-order-\(UUID().uuidString).pdf")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        await viewModel.exportMerge(to: outputURL)
+
+        let call = try XCTUnwrap(merger.calls.first)
+        XCTAssertEqual(call.sourceURLs, [first, second])
+        XCTAssertEqual(call.outputURL, outputURL)
+        XCTAssertEqual(viewModel.lastMergeOutputURL, outputURL)
+    }
+
+    func testExportMergeIsRefusedWhenQueueIsTooSmall() async throws {
+        let merger = ControlledMerger()
+        merger.onMerge = { $0.outputURL }
+        let viewModel = BookletMakerViewModel(merger: merger)
+        viewModel.selectedTool = .merge
+        let only = try makeSourcePDF(pageCount: 1)
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-refused-\(UUID().uuidString).pdf")
+        defer {
+            try? FileManager.default.removeItem(at: only)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        await viewModel.loadMergePDFs([only])
+        await viewModel.exportMerge(to: outputURL)
+
+        XCTAssertTrue(merger.calls.isEmpty, "Export must not run below the two-file minimum")
+        XCTAssertNil(viewModel.lastMergeOutputURL)
+    }
+
+    func testExportMergeFailureSurfacesErrorAndClearsBusyState() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 1)
+        let merger = ControlledMerger()
+        let viewModel = BookletMakerViewModel(merger: merger)
+        viewModel.selectedTool = .merge
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-failed-\(UUID().uuidString).pdf")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        merger.onMerge = { call in
+            throw PDFMerger.MergeError.writeFailed(call.outputURL)
+        }
+        await viewModel.loadMergePDFs([first, second])
+        await viewModel.exportMerge(to: outputURL)
+
+        XCTAssertNil(viewModel.lastMergeOutputURL)
+        XCTAssertFalse(viewModel.isRendering)
+        XCTAssertNotNil(viewModel.errorMessage)
+    }
+
+    func testCancelledMergeThenNewMergeCompletesCleanly() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 1)
+        let merger = ControlledMerger()
+        let viewModel = BookletMakerViewModel(merger: merger)
+        viewModel.selectedTool = .merge
+        let outputA = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-cancel-a-\(UUID().uuidString).pdf")
+        let outputB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-cancel-b-\(UUID().uuidString).pdf")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: outputA)
+            try? FileManager.default.removeItem(at: outputB)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+
+        var releaseA: CheckedContinuation<Void, Never>?
+        merger.onMerge = { call in
+            await withCheckedContinuation { releaseA = $0 }
+            return call.outputURL
+        }
+        let exportA = Task { await viewModel.exportMerge(to: outputA) }
+        while merger.calls.isEmpty { await Task.yield() }
+        XCTAssertTrue(viewModel.isRendering)
+
+        viewModel.cancel()
+        XCTAssertTrue(viewModel.isCancelling)
+        releaseA?.resume()
+        await exportA.value
+
+        XCTAssertNil(viewModel.lastMergeOutputURL, "A cancelled merge records no success")
+        XCTAssertFalse(viewModel.isRendering)
+        XCTAssertFalse(viewModel.isCancelling)
+
+        merger.onMerge = { $0.outputURL }
+        await viewModel.exportMerge(to: outputB)
+
+        XCTAssertEqual(viewModel.lastMergeOutputURL, outputB)
+        XCTAssertFalse(viewModel.isRendering)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func testMergeExportIsRefusedWhileAnotherExportIsBusy() async throws {
+        // Unlike `export(to:)` (booklet), merge and split guard on
+        // `canExport…`, which includes `!isBusy`. A second merge therefore
+        // cannot start on top of a running one: the caller must cancel first.
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 1)
+        let merger = ControlledMerger()
+        let viewModel = BookletMakerViewModel(merger: merger)
+        viewModel.selectedTool = .merge
+        let outputA = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-busy-a-\(UUID().uuidString).pdf")
+        let outputB = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merged-busy-b-\(UUID().uuidString).pdf")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+            try? FileManager.default.removeItem(at: outputA)
+            try? FileManager.default.removeItem(at: outputB)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+
+        var releaseA: CheckedContinuation<Void, Never>?
+        merger.onMerge = { call in
+            await withCheckedContinuation { releaseA = $0 }
+            return call.outputURL
+        }
+        let exportA = Task { await viewModel.exportMerge(to: outputA) }
+        while merger.calls.isEmpty { await Task.yield() }
+        XCTAssertTrue(viewModel.isRendering)
+
+        // The second attempt must be dropped, not queued.
+        await viewModel.exportMerge(to: outputB)
+        XCTAssertEqual(merger.calls.count, 1, "A busy merge must not start a second job")
+        XCTAssertNil(viewModel.lastMergeOutputURL)
+
+        releaseA?.resume()
+        await exportA.value
+
+        XCTAssertEqual(
+            viewModel.lastMergeOutputURL,
+            outputA,
+            "The in-flight merge is the only one that may record a result"
+        )
+        XCTAssertFalse(viewModel.isRendering)
+    }
+
+    // MARK: - Merge and the rest of the view model
+
+    func testClearResetsTheMergeQueue() async throws {
+        let first = try makeSourcePDF(pageCount: 1)
+        let second = try makeSourcePDF(pageCount: 1)
+        let viewModel = BookletMakerViewModel()
+        viewModel.selectedTool = .merge
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        await viewModel.loadMergePDFs([first, second])
+        XCTAssertFalse(viewModel.mergeDocuments.isEmpty)
+
+        viewModel.clear()
+
+        XCTAssertTrue(viewModel.mergeDocuments.isEmpty)
+        XCTAssertEqual(viewModel.mergePageCount, 0)
+        XCTAssertNil(viewModel.lastMergeOutputURL)
+        XCTAssertFalse(viewModel.canExportMerge)
+    }
+
+    func testCanExportFollowsTheSelectedTool() async throws {
+        let first = try makeSourcePDF(pageCount: 2)
+        let second = try makeSourcePDF(pageCount: 2)
+        let viewModel = BookletMakerViewModel()
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        // Merge queue is ready, but the booklet tool is selected: exporting
+        // must follow the selected tool, not the merge queue.
+        await viewModel.loadMergePDFs([first, second])
+        XCTAssertTrue(viewModel.canExportMerge)
+        viewModel.selectedTool = .booklet
+        XCTAssertTrue(viewModel.canExportBooklet)
+        XCTAssertEqual(viewModel.selectedTool, .booklet)
+
+        // Dropping the queued files below two invalidates only merge export.
+        viewModel.removeMergeDocument(viewModel.mergeDocuments[0])
+        XCTAssertFalse(viewModel.canExportMerge)
     }
 
     private func makeSourcePDF(pageCount: Int) throws -> URL {
