@@ -33,6 +33,16 @@ class BookletMakerUITestCase: XCTestCase {
     /// 使本地化测试在任何机器上结果一致。
     func launchApp(language: String, locale: String) {
         app = XCUIApplication()
+        // 打开插件的测试接缝。
+        //
+        // 合并队列靠它注入夹具；导出面板靠它把保存位置预选到宿主自己的临时
+        // 目录。这一行曾经只写在合并队列的启动器里，基类的常规启动器漏了——
+        // 于是导出测试在**关闭**接缝的情况下运行，宿主（测试宿主未开沙盒）
+        // 把产物写进了用户的「文稿」目录。断言照样全绿，问题只在事后表现为
+        // 「用户文件夹里多出一个 PDF」，极易被当成偶发残留忽略掉。
+        //
+        // 因此它必须留在基类：任何一个 UI 测试都用同一套装配，不要按需再设。
+        app.launchEnvironment["BOOKLET_MAKER_UI_TESTING"] = "1"
         app.launchArguments += [
             "-AppleLanguages", "(\(language))", "-AppleLocale", locale,
             "-ApplePersistenceIgnoreState", "YES",
@@ -276,5 +286,18 @@ class BookletMakerUITestCase: XCTestCase {
         app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@ OR value == %@", value, value))
             .firstMatch
+    }
+}
+
+extension XCUIElement {
+    /// 按平台选择点击方式：iOS 用 tap，macOS 用 click。
+    ///
+    /// 放在扩展里而不是测试基类上：它是元素的操作，不是测试基类的能力。
+    func tapOrClick() {
+        #if os(iOS)
+        tap()
+        #else
+        click()
+        #endif
     }
 }

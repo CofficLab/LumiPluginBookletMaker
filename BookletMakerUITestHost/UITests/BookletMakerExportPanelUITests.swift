@@ -235,14 +235,3 @@ final class BookletMakerExportPanelUITests: BookletMakerUITestCase {
         return app.dialogs.firstMatch
     }
 }
-
-extension XCUIElement {
-    /// 按平台选择点击方式：iOS 用 tap，macOS 用 click。
-    func tapOrClick() {
-        #if os(iOS)
-        tap()
-        #else
-        click()
-        #endif
-    }
-}
