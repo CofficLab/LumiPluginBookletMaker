@@ -24,6 +24,8 @@ struct PDFDocumentOverviewView: View {
                     }
                 }
                 .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("overview.documentInfo")
             }
 
             Section {
@@ -97,8 +99,7 @@ struct PDFDocumentOverviewView: View {
             }
         }
         .navigationDestination(for: MobileWorkspaceState.Tool.self) { tool in
-            feature.makeContentView(onOpenPDF: onOpenPDF)
-                .navigationBarTitleDisplayMode(.inline)
+            ToolDestination(tool: tool, feature: feature, onOpenPDF: onOpenPDF)
         }
         .overlay(alignment: .top) {
             if let message = feature.sessionErrorMessage {
@@ -171,6 +172,55 @@ struct PDFDocumentOverviewView: View {
         .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 20)
         .padding(.top, 8)
+    }
+}
+
+/// 工具页的导航目的地。
+///
+/// ## 为什么必须同步 `selectedTool`
+///
+/// `BookletMakerMobileFeature.makeContentView()` 按 `workspace.selectedTool`
+/// 决定渲染哪个工具页，而该值初值是 `.booklet`。若不先把导航值写进去，点
+/// 「Merge PDF」推进去的会是小册子页——入口可点、页面与所点工具不符，
+/// 三个工具入口实际只剩一个可用。
+///
+/// `selectedTool` 的 setter 走 `selectTool(_:)`，它要求 phase 为 `.ready` 或
+/// `.resultReady`；概览页正处在这两个状态，因此同步赋值不会被门控挡下。
+///
+/// 赋值放在 `body` 求值期而非 `onAppear`：后者晚一帧执行，而同一帧里
+/// `makeContentView()` 已经被求值过一次，拿到的是旧工具。
+private struct ToolDestination: View {
+    let tool: MobileWorkspaceState.Tool
+    @ObservedObject var feature: BookletMakerMobileFeature
+    let onOpenPDF: () -> Void
+
+    var body: some View { destination }
+
+    /// 经 `AnyView` 收敛，让同步赋值与视图构造处在不同的表达式里。
+    ///
+    /// 直接在 `body` 里先赋值再 `return` 会让 SwiftUI 的 `some View` 推导
+    /// 走进编译器缺陷（failed to produce diagnostic），因此把赋值收进一个
+    /// 返回具体类型的函数。
+    private var destination: AnyView {
+        let content = makeToolPage()
+        return content
+    }
+
+    private func makeToolPage() -> AnyView {
+        // 导航值用内部枚举 `MobileWorkspaceState.Tool`，feature 的公开
+        // `selectedTool` 用 `BookletMakerMobileFeature.Tool`——两者一一对应
+        // 但不是同一类型，需要显式映射。
+        feature.selectedTool = switch tool {
+        case .booklet: .booklet
+        case .split: .split
+        case .merge: .merge
+        }
+        return AnyView(
+            feature.makeContentView(onOpenPDF: onOpenPDF)
+                .navigationBarTitleDisplayMode(.inline)
+                // 工具变化时强制重建，避免复用上一个工具的页面状态。
+                .id(tool)
+        )
     }
 }
 #endif

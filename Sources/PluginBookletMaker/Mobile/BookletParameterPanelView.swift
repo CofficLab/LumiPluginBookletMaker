@@ -32,6 +32,7 @@ struct BookletParameterPanelView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .accessibilityIdentifier("params.paper")
             }
 
             HStack {
@@ -42,6 +43,7 @@ struct BookletParameterPanelView: View {
                     Text(BookletLocalization.string("Simple Pair")).tag(LayoutMode.simplePair)
                 }
                 .pickerStyle(.menu)
+                .accessibilityIdentifier("params.layout")
             }
         }
     }
@@ -52,11 +54,13 @@ struct BookletParameterPanelView: View {
         parameterSection(BookletLocalization.string("Spacing")) {
             measurementSlider(
                 BookletLocalization.string("Margin"),
-                value: $viewModel.settings.marginMM
+                value: $viewModel.settings.marginMM,
+                identifier: "params.margin"
             )
             measurementSlider(
                 BookletLocalization.string("Gutter"),
-                value: $viewModel.settings.gutterMM
+                value: $viewModel.settings.gutterMM,
+                identifier: "params.gutter"
             )
         }
     }
@@ -69,12 +73,14 @@ struct BookletParameterPanelView: View {
                 Label(BookletLocalization.string("Add cut marks"), systemImage: "scissors")
             }
             .tint(.accentColor)
+            .accessibilityIdentifier("params.cutMarks")
 
             Toggle(isOn: $viewModel.settings.padBlankPage) {
                 Label(BookletLocalization.string("Pad with blank page"), systemImage: "plus.rectangle.on.rectangle")
             }
             .tint(.accentColor)
             .disabled(viewModel.settings.layout == .bookletFold)
+            .accessibilityIdentifier("params.padBlank")
         }
     }
 
@@ -95,7 +101,11 @@ struct BookletParameterPanelView: View {
         }
     }
 
-    private func measurementSlider(_ title: String, value: Binding<Double>) -> some View {
+    private func measurementSlider(
+        _ title: String,
+        value: Binding<Double>,
+        identifier: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(title)
@@ -107,6 +117,7 @@ struct BookletParameterPanelView: View {
             }
             Slider(value: value, in: 0 ... 30, step: 1)
                 .accessibilityLabel(title)
+                .accessibilityIdentifier(identifier)
         }
     }
 }

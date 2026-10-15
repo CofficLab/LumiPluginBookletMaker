@@ -53,6 +53,7 @@ struct BookletExportResultMobileView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("exportResult.share")
 
                     Button {
                         feature.presentSave()
@@ -61,6 +62,7 @@ struct BookletExportResultMobileView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("exportResult.save")
                 }
                 .controlSize(.large)
             }
@@ -90,6 +92,8 @@ struct BookletExportResultMobileView: View {
             Spacer()
         }
         .padding(10)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("exportResult.file.\(url.lastPathComponent)")
     }
 
     private func bookletPageCount(for url: URL) -> Int? {

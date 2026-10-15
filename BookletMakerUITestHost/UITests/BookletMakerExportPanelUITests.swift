@@ -164,10 +164,17 @@ final class BookletMakerExportPanelUITests: BookletMakerUITestCase {
         //   而 XCUITest runner 有沙盒、事后清理不掉；
         // - 输入绝对路径到 runner 的临时目录 → runner 的临时目录被沙盒重定向，
         //   宿主（未开沙盒）无权写入，保存会静默失败、面板不关闭。
+        //
+        // 断言只校验 basename 非空且指向演示文档，**不**要求带 `.pdf` 后缀：
+        // `NSSavePanel` 在设了 `allowedContentTypes` 时会把扩展名从文本框里
+        // 隐藏起来（用户输入 `a.pdf` 实际也只显示 `a`），保存时由系统补回。
+        // 因此 `nameField.value` 读到的是 `sample-story-v2-booklet` 而非
+        // `sample-story-v2-booklet.pdf`——这是 AppKit 的正常行为，早先按
+        // `.pdf` 后缀断言会稳定失败。
         let defaultName = (nameField.value as? String) ?? ""
         XCTAssertTrue(
-            defaultName.hasSuffix(".pdf"),
-            "面板未预填 PDF 文件名，实际为 \(defaultName)。\(panel.debugDescription)"
+            defaultName.contains("sample-story-v2"),
+            "面板未预填演示文档的导出文件名，实际为「\(defaultName)」。\(panel.debugDescription)"
         )
 
         let save = panel.buttons["OKButton"]

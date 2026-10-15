@@ -60,6 +60,7 @@ struct PDFSplitPlanEditorView: View {
             .keyboardType(.numbersAndPunctuation)
             .textFieldStyle(.roundedBorder)
             .accessibilityLabel(BookletLocalization.string("Split after pages"))
+            .accessibilityIdentifier("split.cutPointInput")
             Text(BookletLocalization.string("Comma- or space-separated page numbers"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -126,6 +127,7 @@ struct PDFSplitPlanEditorView: View {
                 : BookletLocalization.string("no split after this page")
         ))
         .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("split.page.\(page)")
     }
 
     private var pageRows: some View {
@@ -199,6 +201,7 @@ struct PDFSplitPlanEditorView: View {
                     .accessibilityLabel(
                         BookletLocalization.string("File name for %@", segment.rangeLabel)
                     )
+                    .accessibilityIdentifier("split.name.\(segment.rangeKey)")
                 }
             }
 

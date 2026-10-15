@@ -134,6 +134,12 @@ public final class BookletMakerMobileFeature: ObservableObject {
 
     /// Import and validate an ordered group of PDFs for the merge tool.
     public func importDocuments(from urls: [URL]) async {
+        // 如果是通过测试参数注入的，自动切换到合并工具。
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-SeedMergeQueue") && workspace.selectedTool != .merge {
+            workspace.selectTool(.merge)
+        }
+
         sessionErrorMessage = nil
         workspace.beginImport()
         do {

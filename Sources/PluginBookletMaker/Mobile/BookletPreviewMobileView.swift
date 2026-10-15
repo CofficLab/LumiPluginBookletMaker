@@ -57,6 +57,7 @@ struct BookletPreviewMobileView: View {
             }
         }
         .pickerStyle(.segmented)
+        .accessibilityIdentifier("booklet.readingPicker")
     }
 
     // MARK: - Bottom bar
@@ -75,6 +76,7 @@ struct BookletPreviewMobileView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(!viewModel.canExportBooklet)
+                    .accessibilityIdentifier("booklet.export")
                 }
             }
         }
@@ -93,6 +95,7 @@ struct BookletPreviewMobileView: View {
         .font(.footnote)
         .foregroundStyle(.secondary)
         .lineLimit(1)
+        .accessibilityIdentifier("booklet.summary")
     }
 
     private var busyView: some View {

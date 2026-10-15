@@ -181,6 +181,7 @@ struct BookletPreviewStageView: View {
                     Int64(outputSide.rightPage)
                 )
             )
+            .accessibilityIdentifier("booklet.sheet.\(outputSide.index)")
         }
         .padding(8)
         .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
@@ -256,6 +257,7 @@ struct BookletPreviewStageView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .disabled(!viewModel.canExportBooklet)
+                .accessibilityIdentifier("booklet.exportStage")
             }
             .padding(16)
         }
