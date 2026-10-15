@@ -20,9 +20,6 @@ struct BookletMakerRailView: View {
 
                     AppDivider()
 
-                    railTitle(BookletLocalization.string(
-                        viewModel.selectedTool == .merge ? "PDF Files" : "Current PDF"
-                    ))
                     BookletDropZoneView(viewModel: viewModel)
 
                     AppDivider()
@@ -53,8 +50,6 @@ struct BookletMakerRailView: View {
 
     private var toolPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            railTitle(BookletLocalization.string("PDF Tools"))
-
             ForEach(PDFTool.displayOrder) { tool in
                 AppListRow(
                     isSelected: viewModel.selectedTool == tool,
