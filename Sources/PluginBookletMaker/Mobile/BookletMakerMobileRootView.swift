@@ -15,6 +15,7 @@ public struct BookletMakerMobileRootView: View {
     @State private var saveDocument: PDFFileDocument?
     @State private var saveFilename = "booklet"
     @State private var isSavingPresented = false
+    @State private var navigationPath = NavigationPath()
 
     public init(feature: BookletMakerMobileFeature) {
         _feature = StateObject(wrappedValue: feature)

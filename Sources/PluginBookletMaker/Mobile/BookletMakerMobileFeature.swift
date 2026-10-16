@@ -60,7 +60,7 @@ public final class BookletMakerMobileFeature: ObservableObject {
         self.viewModel = viewModel
         workspace = MobileWorkspaceState()
         documentStore = MobileDocumentStore()
-        observation = BookletMakerFeatureObserver(viewModel: viewModel) { [weak self] in
+        observation = BookletMakerFeatureObserver(viewModel: viewModel, workspace: workspace) { [weak self] in
             self?.objectWillChange.send()
         }
         MobileDocumentStore.cleanupStaleSessions(keeping: documentStore)
@@ -136,7 +136,10 @@ public final class BookletMakerMobileFeature: ObservableObject {
     public func importDocuments(from urls: [URL]) async {
         // 如果是通过测试参数注入的，自动切换到合并工具。
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-SeedMergeQueue") && workspace.selectedTool != .merge {
+        if arguments.contains("-SeedMergeQueue") {
+            // 先设置 phase 为 .ready，这样才能切换到合并工具。
+            // 这样可以确保在应用启动时（phase 为 .welcome）也能正确切换。
+            workspace.documentReady()
             workspace.selectTool(.merge)
         }
 

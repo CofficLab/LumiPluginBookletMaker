@@ -32,12 +32,8 @@ private struct BookletMakerMobileTestHostRoot: View {
             .onAppear {
                 // 存储 feature 引用，供测试接缝访问。
                 TestHostState.feature = feature
-                // 延迟注入，给测试留出切换工具的时间。
-                // 测试流程：启动应用 → 打开示例文档 → 切换到合并工具 → 等待注入完成。
-                // 这里的 1 秒延迟确保在切换工具后再注入。
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    injectMergeQueueIfRequested()
-                }
+                // 立即注入，不延迟。importDocuments 会自动切换到合并工具。
+                injectMergeQueueIfRequested()
             }
     }
 

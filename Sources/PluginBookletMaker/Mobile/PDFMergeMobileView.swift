@@ -10,7 +10,7 @@ struct PDFMergeMobileView: View {
         VStack(spacing: 0) {
             List {
                 Section {
-                    ForEach(viewModel.mergeDocuments) { item in
+                    ForEach(Array(viewModel.mergeDocuments.enumerated()), id: \.element.id) { index, item in
                         HStack(spacing: 12) {
                             Image(systemName: "doc.fill")
                                 .foregroundStyle(Color.accentColor)
@@ -23,7 +23,7 @@ struct PDFMergeMobileView: View {
                             }
                         }
                         .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("merge.file.\(item.id.uuidString)")
+                        .accessibilityIdentifier("merge.file.\(index)")
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 viewModel.removeMergeDocument(item)
