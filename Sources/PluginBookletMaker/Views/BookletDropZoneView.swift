@@ -36,6 +36,7 @@ struct BookletDropZoneView: View {
         VStack(spacing: 12) {
             // 拖放区域
             dropZone
+                .frame(maxWidth: .infinity)
                 .frame(height: 120)
 
             // 文件信息
