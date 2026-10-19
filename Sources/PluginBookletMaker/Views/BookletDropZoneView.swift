@@ -49,6 +49,15 @@ struct BookletDropZoneView: View {
                 AppErrorBanner(message: LocalizedStringKey(errorMessage))
             }
         }
+        // 卡片必须占满侧栏宽度，不能按子视图的理想宽度收缩。
+        //
+        // SwiftUI 的 VStack 默认取各子视图 ideal width 的最大值，而
+        // `mergeFileInfo` 是 `VStack(alignment: .leading)`，其行内 `Spacer()`
+        // 的理想宽度约等于 0，行高又只有 caption 字号 —— 合并态的内容因而
+        // 天然比拆分态的 `fileInfo` 窄，导致同一张卡片在 split/booklet 下
+        // 看起来占满宽度、切到 merge 却又缩成一小块。显式声明 maxWidth:
+        // .infinity 让三个工具态共用同一份宽度，与子内容无关。
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .appSurface(
             style: .subtle,
