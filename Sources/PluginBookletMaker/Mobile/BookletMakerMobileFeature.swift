@@ -199,6 +199,23 @@ public final class BookletMakerMobileFeature: ObservableObject {
         }
     }
 
+    /// Choose a tool from the landing page, before any document is open.
+    ///
+    /// Unlike `selectedTool`, which routes through `selectTool(_:)` and is
+    /// therefore gated on `.ready` / `.resultReady`, this remembers the
+    /// choice while the workspace is still on the welcome screen so the
+    /// guide flow can open with the right tool already selected.
+    public func chooseToolForNewDocument(_ tool: Tool) {
+        let next: MobileWorkspaceState.Tool = switch tool {
+        case .booklet: .booklet
+        case .split: .split
+        case .merge: .merge
+        }
+        guard workspace.selectedTool != next else { return }
+        exportOutcome = nil
+        workspace.chooseToolForNewDocument(next)
+    }
+
     // MARK: - Export bridge
 
     public func cancel() { viewModel.cancel() }

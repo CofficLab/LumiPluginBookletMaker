@@ -106,6 +106,16 @@ final class MobileWorkspaceState: ObservableObject {
         presentation = nil
     }
 
+    /// Remember the tool chosen from the landing page, before any document
+    /// is open. `selectTool(_:)` is gated on `.ready` / `.resultReady`, so a
+    /// tool picked while the workspace is still on the welcome or importing
+    /// screen needs this separate entry point.
+    func chooseToolForNewDocument(_ tool: Tool) {
+        guard phase != .generating && phase != .cancelling else { return }
+        selectedTool = tool
+        presentation = nil
+    }
+
     // MARK: - Generation lifecycle
 
     func beginGenerating() {

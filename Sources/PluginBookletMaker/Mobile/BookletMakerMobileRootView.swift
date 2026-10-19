@@ -8,10 +8,18 @@ import UniformTypeIdentifiers
 /// 工作区状态机 + 文件生命周期），系统文件选择器、导出结果页、
 /// 分享面板与保存到文件统一在此挂载，避免 App 与 Mobile 各嵌一层
 /// NavigationStack。
+///
+/// 主线是「首页选工具 → 全屏引导 → 直接进工作台」：首页列出三个工具，
+/// 选中后以 `fullScreenCover` 铺满全屏展示分步引导，引导里完成
+/// 「打开 PDF / 用示例」这一步，随后关闭 cover，工作台已经就位。
+/// 中间没有额外的概览页。
 public struct BookletMakerMobileRootView: View {
     @StateObject public var feature: BookletMakerMobileFeature
+    @ObservedObject private var workspace: MobileWorkspaceState
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isImporterPresented = false
+    @State private var activeGuide: BookletGuideKind?
+    @State private var guideInitialPage = 1
     @State private var saveDocument: PDFFileDocument?
     @State private var saveFilename = "booklet"
     @State private var isSavingPresented = false
@@ -19,10 +27,11 @@ public struct BookletMakerMobileRootView: View {
 
     public init(feature: BookletMakerMobileFeature) {
         _feature = StateObject(wrappedValue: feature)
+        _workspace = ObservedObject(wrappedValue: feature.workspace)
     }
 
     private var isDocumentPhase: Bool {
-        switch feature.workspace.phase {
+        switch workspace.phase {
         case .ready, .generating, .cancelling, .resultReady: true
         case .welcome, .importing, .failed: false
         }
@@ -33,7 +42,7 @@ public struct BookletMakerMobileRootView: View {
             if horizontalSizeClass == .regular, isDocumentPhase {
                 iPadSplitView
             } else {
-                NavigationStack {
+                NavigationStack(path: $navigationPath) {
                     content
                 }
             }
@@ -67,22 +76,11 @@ public struct BookletMakerMobileRootView: View {
             case .saveSplit(let urls):
                 SharePresenter.ShareSheet(urls: urls)
                     .presentationDetents([.medium, .large])
-            case .saveBooklet(let url):
+            case .saveBooklet(let url), .saveMerge(let url):
                 // 单文件：直接进入系统“保存到文件”对话框。
                 Color.clear
                     .onAppear {
-                        saveDocument = PDFFileDocument(url: url)
-                        saveFilename = url.deletingPathExtension().lastPathComponent
-                        isSavingPresented = true
-                        feature.workspace.present(nil)
-                    }
-            case .saveMerge(let url):
-                Color.clear
-                    .onAppear {
-                        saveDocument = PDFFileDocument(url: url)
-                        saveFilename = url.deletingPathExtension().lastPathComponent
-                        isSavingPresented = true
-                        feature.workspace.present(nil)
+                        presentSaveExporter(for: url)
                     }
             case .bookletOptions, .splitBatchInput, .splitRename, .help:
                 EmptyView()
@@ -94,7 +92,31 @@ public struct BookletMakerMobileRootView: View {
             contentType: .pdf,
             defaultFilename: saveFilename
         ) { _ in
-            feature.workspace.present(nil)
+            workspace.present(nil)
+        }
+        .fullScreenCover(item: $activeGuide) { kind in
+            BookletGuideFlowView(
+                kind: kind,
+                initialPage: guideInitialPage,
+                onOpenPDF: {
+                    // 多选与否由 `fileImporter` 按当前工具决定，这里只负责
+                    // 撤下引导并把系统文件选择器拉起来。
+                    dismissGuideThenPresentImporter()
+                },
+                onUseSample: {
+                    prepareTool(for: kind)
+                    activeGuide = nil
+                    feature.openSampleDocument()
+                },
+                onDismiss: closeGuideAndReturnHome
+            )
+        }
+        .tint(BookletMobileStyle.accent)
+        .onChange(of: workspace.phase) { _, phase in
+            // 进入工作台或回到首页时清空导航栈，避免退回被覆盖的中间页面。
+            if phase == .ready || phase == .welcome {
+                navigationPath = NavigationPath()
+            }
         }
     }
 
@@ -154,7 +176,9 @@ public struct BookletMakerMobileRootView: View {
                         Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
                     }
                     NavigationLink {
-                        BookletHelpMobileView()
+                        BookletHelpMobileView(onOpenGuide: { kind in
+                            showGuide(kind)
+                        })
                     } label: {
                         Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
                     }
@@ -168,6 +192,71 @@ public struct BookletMakerMobileRootView: View {
                 }
                 .accessibilityLabel(BookletLocalization.string("Document menu"))
             }
+        }
+    }
+
+    // MARK: - Routing
+
+    @ViewBuilder
+    private var content: some View {
+        switch workspace.phase {
+        case .welcome, .failed:
+            BookletWelcomeView(
+                feature: feature,
+                onChooseTool: startGuide(for:)
+            )
+        case .importing:
+            importingView
+        case .ready, .generating, .cancelling, .resultReady:
+            // 引导已经选定工具，这里直接进对应工作台，不再经过中间概览页。
+            feature.makeContentView(onOpenPDF: { isImporterPresented = true })
+        }
+    }
+
+    /// 从首页点工具卡：记住工具并打开全屏引导。
+    private func startGuide(for tool: BookletMakerMobileFeature.Tool) {
+        showGuide(BookletGuideKind(tool))
+    }
+
+    /// 打开引导，并保证工作台已经准备好对应的工具。
+    ///
+    /// 引导有两个入口：首页的工具卡，以及帮助页的「再看一次引导」。
+    /// 后者不带工具信息，所以这里统一补一次工具选择——否则引导结束时
+    /// 打开的文件会落进默认工具的工作台。
+    private func showGuide(_ kind: BookletGuideKind, startingAt page: Int = 1) {
+        prepareTool(for: kind)
+        guideInitialPage = page
+        activeGuide = kind
+    }
+
+    /// 关闭引导并回到首页。
+    ///
+    /// 引导可能由首页或帮助页打开，关闭时统一丢弃当前文档并清空导航栈，
+    /// 避免退回被覆盖的中间页面。
+    private func closeGuideAndReturnHome() {
+        activeGuide = nil
+        navigationPath = NavigationPath()
+        feature.closeDocument()
+    }
+
+    private func prepareTool(for kind: BookletGuideKind) {
+        let tool: BookletMakerMobileFeature.Tool = switch kind {
+        case .booklet: .booklet
+        case .split: .split
+        case .merge: .merge
+        }
+        feature.chooseToolForNewDocument(tool)
+    }
+
+    /// 先撤下全屏引导再拉起系统文件选择器。
+    ///
+    /// 两者都是全屏模态，同一帧内换 presentation 会互相打架，
+    /// 因此让 cover 的关闭动画先走完再弹出选择器。
+    private func dismissGuideThenPresentImporter() {
+        activeGuide = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            isImporterPresented = true
         }
     }
 
@@ -202,21 +291,16 @@ public struct BookletMakerMobileRootView: View {
 
     private var presentationBinding: Binding<MobileWorkspaceState.Presentation?> {
         Binding(
-            get: { feature.workspace.presentation },
-            set: { feature.workspace.present($0) }
+            get: { workspace.presentation },
+            set: { workspace.present($0) }
         )
     }
 
-    @ViewBuilder
-    private var content: some View {
-        switch feature.workspace.phase {
-        case .welcome, .failed:
-            BookletWelcomeView(feature: feature, onOpenPDF: { isImporterPresented = true })
-        case .importing:
-            importingView
-        case .ready, .generating, .cancelling, .resultReady:
-            PDFDocumentOverviewView(feature: feature, onOpenPDF: { isImporterPresented = true })
-        }
+    private func presentSaveExporter(for url: URL) {
+        saveDocument = PDFFileDocument(url: url)
+        saveFilename = url.deletingPathExtension().lastPathComponent
+        isSavingPresented = true
+        workspace.present(nil)
     }
 
     private var importingView: some View {
