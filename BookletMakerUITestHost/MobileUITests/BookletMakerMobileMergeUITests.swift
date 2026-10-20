@@ -32,46 +32,35 @@ final class BookletMakerMobileMergeUITests: BookletMakerMobileUITestCase {
     }
 
     /// 启动应用并等待合并队列注入完成。
+    ///
+    /// ## 注入后不需要再导航
+    ///
+    /// 宿主的 `-SeedMergeQueue N` 会在 `onAppear` 里直接调用
+    /// `feature.importDocuments(from:)`，这把工作区推进到 `.ready`，根视图
+    /// 随即渲染合并工作台。**首页（`.welcome`）根本不会出现**，因此这里
+    /// 不能走「首页工具卡 → 引导页」那条路——`welcome.mergeTool` 在
+    /// 注入场景下查不到。
+    ///
+    /// 合并工具另有一层特殊性：它需要至少两个文件，内置示例演示不了，
+    /// 所以引导页本身也不提供「使用示例」入口
+    /// （`BookletGuideKind.supportsSampleDocument == false`）。
+    ///
+    /// 没有注入参数时（空队列场景）才会停在首页，此时引导页走一遍即可
+    /// 关闭回到首页。
     private func launchAndWaitForMerge(arguments: [String] = []) {
         launchApp(language: "en", locale: "en_US", arguments: arguments)
 
-        // 宿主在 onAppear 时立即注入（如果检测到 -SeedMergeQueue 参数）。
-        // 注入是异步的，但通常很快完成。等待 1 秒确保注入和工具切换完成。
-        Thread.sleep(forTimeInterval: 1.0)
-
-        // 如果有参数，应用应该已经注入了合并队列，但视图可能还在概览页。
-        // 需要手动导航到合并工具页面。
         if arguments.contains("-SeedMergeQueue") {
-            // 先打开示例文档（如果还没打开）。
-            let welcomeButton = element("welcome.useSample")
-            if welcomeButton.waitForExistence(timeout: 3) {
-                welcomeButton.tap()
-                _ = element("overview.bookletTool").waitForExistence(timeout: 10)
-            }
-
-            // 滚动到列表底部，找到合并工具按钮。
-            // merge 工具按钮在列表底部，需要滚动才能看到。
-            app.swipeUp()
-            Thread.sleep(forTimeInterval: 0.5)
-            app.swipeUp()
-            Thread.sleep(forTimeInterval: 0.5)
-
-            // 点击合并工具按钮。
-            let mergeTool = element("overview.mergeTool")
-            if mergeTool.waitForExistence(timeout: 5) {
-                mergeTool.tap()
-                _ = element("merge.summary").waitForExistence(timeout: 10)
-            }
+            // 注入是异步的（Task 内生成 PDF 再导入），等合并工作台就位。
+            XCTAssertTrue(
+                element("merge.summary").waitForExistence(timeout: 20),
+                "注入队列后未进入合并工作台。\(app.debugDescription)"
+            )
         } else {
-            // 没有参数，应用应该在欢迎页，需要手动导航到合并工具。
-            let welcomeButton = element("welcome.useSample")
-            if welcomeButton.waitForExistence(timeout: 3) {
-                welcomeButton.tap()
-                _ = element("overview.bookletTool").waitForExistence(timeout: 10)
-            }
-
-            // 切换到合并工具。
-            switchTool("overview.mergeTool", expecting: "merge.summary")
+            // 空队列：工作区仍在首页，走引导页再关闭即可回到首页。
+            // 关闭后 phase 保持 `.welcome`，合并工作台需要文档，
+            // 因此空队列的门控由 `canExportMerge` 的单元测试覆盖。
+            _ = element("welcome.mergeTool").waitForExistence(timeout: 20)
         }
 
         // 等待 UI 更新完成。
@@ -102,17 +91,28 @@ final class BookletMakerMobileMergeUITests: BookletMakerMobileUITestCase {
         assertEnabled("merge.export")
     }
 
-    /// 空队列时导出禁用，摘要显示「0 files」。
-    func testEmptyQueueDisablesExportAndShowsZeroSummary() {
+    /// 空队列时用户仍停在首页，不会被丢进一个空的合并工作台。
+    ///
+    /// ## 为什么不再断言 `merge.export` 与「0 files」摘要
+    ///
+    /// 合并工作台只在 `.ready` 之后渲染，而唯一的进入路径有两个：导入
+    /// 文件、或宿主注入队列——两者都要求**至少一个文件**。因此「进入合并
+    /// 工作台但队列为空」这个状态在真实使用中不可达：没有文件就没有
+    /// 工作台，也不会出现一个空壳界面。
+    ///
+    /// 门控本身（`canExportMerge` 在文件数 < 2 时为 false）由
+    /// `PDFMergerTests` / `BookletMakerViewModelTests` 的单元测试覆盖，
+    /// 单文件场景则由上面的 `testExportGateRequiresAtLeastTwoFiles` 覆盖。
+    /// 这条 UI 测试改为守住可达性：空启动必须干净地停在首页。
+    func testEmptyQueueKeepsUserOnWelcome() {
         launchAndWaitForMerge(arguments: [])
 
-        assertDisabled("merge.export")
-
-        let summary = text(of: element("merge.summary"))
         XCTAssertTrue(
-            summary.contains("0 files"),
-            "空队列摘要应显示 0 files，实际为「\(summary)」。\(app.debugDescription)"
+            element("welcome.mergeTool").exists,
+            "空队列启动应停在首页。\(app.debugDescription)"
         )
+        assertNotExists("merge.export")
+        assertNotExists("merge.fileList")
     }
 
     /// 文件重排后摘要与门控保持不变。

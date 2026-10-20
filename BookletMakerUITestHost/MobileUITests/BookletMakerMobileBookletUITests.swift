@@ -9,8 +9,8 @@ final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        openSampleDocument()
-        switchTool("overview.bookletTool", expecting: "booklet.readingPicker")
+        // 主线已是「首页工具卡 → 引导页 → 工作台」，没有概览页这一层。
+        openSampleDocument(tool: "booklet")
     }
 
     /// 六个预览阶段指示器都存在，逐个点击后各自呈现对应内容。
@@ -62,9 +62,11 @@ final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
         assertNotExists("params.cutMarks")
 
         // 6 导出：汇总 + 导出按钮
+        // 移动端的导出按钮常驻底栏，标识符是 `booklet.export`
+        // （`booklet.exportStage` 是 macOS 逐阶段内容区里的标识符）。
         XCTAssertTrue(scrollHorizontallyTo("stage.6"))
         element("stage.6").tap()
-        assertEnabled("booklet.exportStage")
+        assertEnabled("booklet.export")
     }
     /// 参数面板的纸张、版式与间距控件均可见可用。
     func testParameterControlsArePresent() {
@@ -204,9 +206,18 @@ final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
     }
 
     /// 总览阶段的导出按钮在有文档时可用。
+    ///
+    /// ## 为什么断言的是 `booklet.export` 而不是 `booklet.exportStage`
+    ///
+    /// `booklet.exportStage` 是 macOS `BookletPreviewStageView` 第 6 阶段
+    /// 里的按钮标识符。移动端没有逐阶段的独立内容区——导出按钮常驻在
+    /// 底栏，标识符是 `booklet.export`（见 `BookletPreviewMobileView`）。
+    ///
+    /// 阶段指示器在移动端仍然存在（`stage.1` … `stage.6`），点 `stage.6`
+    /// 后底栏的导出按钮依然可用，因此这里先切到导出阶段再断言按钮启用。
     func testExportEnabledOnReviewStage() {
         XCTAssertTrue(scrollHorizontallyTo("stage.6"))
         element("stage.6").tap()
-        assertEnabled("booklet.exportStage")
+        assertEnabled("booklet.export")
     }
 }

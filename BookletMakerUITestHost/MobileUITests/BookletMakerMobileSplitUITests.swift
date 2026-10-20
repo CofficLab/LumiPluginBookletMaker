@@ -11,8 +11,8 @@ final class BookletMakerMobileSplitUITests: BookletMakerMobileUITestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        openSampleDocument()
-        switchTool("overview.splitTool", expecting: "split.readingPicker")
+        // 主线已是「首页工具卡 → 引导页 → 工作台」，没有概览页这一层。
+        openSampleDocument(tool: "split")
     }
 
     /// 没有切分点时导出按钮禁用。

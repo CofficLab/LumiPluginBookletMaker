@@ -56,20 +56,8 @@ struct BookletWelcomeView: View {
         .background(BookletMobileStyle.canvas)
         .navigationTitle(BookletLocalization.string("Booklet Maker"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    NavigationLink {
-                        BookletHelpMobileView()
-                    } label: {
-                        Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel(BookletLocalization.string("More"))
-            }
-        }
+        // 导航栏工具栏由根视图统一挂载（首页与工具页共用 `documentMenu`），
+        // 这里不再自带一份，避免同一屏出现两个「更多」菜单。
     }
 
     private enum Illustration: Equatable {

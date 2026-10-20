@@ -199,17 +199,58 @@ public struct BookletMakerMobileRootView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch workspace.phase {
-        case .welcome, .failed:
-            BookletWelcomeView(
-                feature: feature,
-                onChooseTool: startGuide(for:)
-            )
-        case .importing:
-            importingView
-        case .ready, .generating, .cancelling, .resultReady:
-            // 引导已经选定工具，这里直接进对应工作台，不再经过中间概览页。
-            feature.makeContentView(onOpenPDF: { isImporterPresented = true })
+        Group {
+            switch workspace.phase {
+            case .welcome, .failed:
+                BookletWelcomeView(
+                    feature: feature,
+                    onChooseTool: startGuide(for:)
+                )
+            case .importing:
+                importingView
+            case .ready, .generating, .cancelling, .resultReady:
+                // 引导已经选定工具，这里直接进对应工作台，不再经过中间概览页。
+                feature.makeContentView(onOpenPDF: { isImporterPresented = true })
+            }
+        }
+        // 文档菜单在所有阶段常驻。
+        //
+        // 工作台必须自带它：iPhone 上工作台是导航栈的栈顶根页，没有返回
+        // 按钮，而 `closeDocument` 只挂在 iPad 侧栏上。不给工作台挂菜单，
+        // 用户打开文件后就再也回不到首页，只能杀进程重启——这是真实的
+        // 单向故障。首页则复用同一份，避免同一屏出现两个「更多」。
+        .toolbar { documentMenu }
+    }
+
+    /// 文档菜单：替换文件、帮助、关闭当前 PDF。
+    ///
+    /// 首页与三个工具工作台共用同一份菜单，因此「关闭当前文档回到首页」
+    /// 这条路径在任何阶段都可达，不必依赖某个特定页面的布局。
+    @ToolbarContentBuilder
+    private var documentMenu: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button {
+                    isImporterPresented = true
+                } label: {
+                    Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
+                }
+                NavigationLink {
+                    BookletHelpMobileView(onOpenGuide: { kind in
+                        showGuide(kind)
+                    })
+                } label: {
+                    Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
+                }
+                Button(role: .destructive) {
+                    feature.closeDocument()
+                } label: {
+                    Label(BookletLocalization.string("Close Current PDF"), systemImage: "xmark.circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel(BookletLocalization.string("Document menu"))
         }
     }
 

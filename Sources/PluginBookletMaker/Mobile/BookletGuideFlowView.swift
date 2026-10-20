@@ -78,35 +78,49 @@ struct BookletGuideFlowView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                BookletMobileProgressView(current: visibleStep, total: kind.stepCount)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
+            GeometryReader { geometry in
+                // 正文必须可滚动：`Spacer` 会把内容按视口高度均分，一旦文案
+                // 换行导致内容超出可用高度，`actionBar` 的底部按钮就会被挤出
+                // 屏幕之外——在小屏 iPhone 上实测「使用示例」的 frame 顶端落在
+                // y≈772，而窗口可视区只到 y≈738，按钮永远点不到。滚动视图让
+                // 内容变长时用户能滑到底，而不是被裁掉。
+                ScrollView {
+                    VStack(spacing: 0) {
+                        BookletMobileProgressView(current: visibleStep, total: kind.stepCount)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
 
-                Spacer(minLength: 18)
-                illustration
-                    .padding(.horizontal, 24)
-                Spacer(minLength: 20)
+                        Spacer(minLength: 18)
+                        illustration
+                            .padding(.horizontal, 24)
+                        Spacer(minLength: 20)
 
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(pageTitle)
-                        .font(.title2.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(pageDescription)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 9) {
+                            Text(pageTitle)
+                                .font(.title2.weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(pageDescription)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: 560, alignment: .leading)
+                        .padding(.horizontal, 26)
+                        .accessibilityIdentifier("guide.text")
+
+                        actionBar
+                            .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    // 内容不足一屏时仍按整屏高度排版，保持插图居中的观感；
+                    // 超出时 ScrollView 自然接管滚动。
+                    .frame(minHeight: geometry.size.height)
                 }
-                .frame(maxWidth: 560, alignment: .leading)
-                .padding(.horizontal, 26)
-                .accessibilityIdentifier("guide.text")
-
-                Spacer(minLength: 20)
-                actionBar
+                .scrollBounceBehavior(.basedOnSize)
+                .background(BookletMobileStyle.canvas.ignoresSafeArea())
+                .navigationTitle(kindTitle)
+                .navigationBarTitleDisplayMode(.inline)
             }
-            .background(BookletMobileStyle.canvas.ignoresSafeArea())
-            .navigationTitle(kindTitle)
-            .navigationBarTitleDisplayMode(.inline)
         }
         .tint(BookletMobileStyle.accent)
         .interactiveDismissDisabled()
