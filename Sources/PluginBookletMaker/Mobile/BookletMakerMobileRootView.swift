@@ -16,6 +16,14 @@ import UniformTypeIdentifiers
 public struct BookletMakerMobileRootView: View {
     @StateObject public var feature: BookletMakerMobileFeature
     @ObservedObject private var workspace: MobileWorkspaceState
+    /// 宿主追加到导航栏尾部的工具栏项。
+    ///
+    /// 本视图内部创建了 `NavigationStack`。SwiftUI 的 `.toolbar` 只对**最近的
+    /// 导航容器**生效：挂在 `NavigationStack` **外面**的 `.toolbar` 会被外层
+    /// 上下文接走（没有外层导航容器时直接不显示），挂在外面的视图也不会被
+    /// 传递进这条嵌套的导航栈。因此宿主（例如设置齿轮）无法从外面往这里塞
+    /// 工具栏项，只能把项收集好传进来，由本视图挂到**栈内内容**上。
+    public let trailingToolbarItems: [AnyView]
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isImporterPresented = false
     @State private var activeGuide: BookletGuideKind?
@@ -25,9 +33,13 @@ public struct BookletMakerMobileRootView: View {
     @State private var isSavingPresented = false
     @State private var navigationPath = NavigationPath()
 
-    public init(feature: BookletMakerMobileFeature) {
+    public init(
+        feature: BookletMakerMobileFeature,
+        trailingToolbarItems: [AnyView] = []
+    ) {
         _feature = StateObject(wrappedValue: feature)
         _workspace = ObservedObject(wrappedValue: feature.workspace)
+        self.trailingToolbarItems = trailingToolbarItems
     }
 
     private var isDocumentPhase: Bool {
@@ -44,6 +56,7 @@ public struct BookletMakerMobileRootView: View {
             } else {
                 NavigationStack(path: $navigationPath) {
                     content
+                        .modifier(TrailingToolbarItemsModifier(items: trailingToolbarItems))
                 }
             }
         }
@@ -127,6 +140,7 @@ public struct BookletMakerMobileRootView: View {
     private var iPadSplitView: some View {
         NavigationSplitView {
             iPadSidebar
+                .modifier(TrailingToolbarItemsModifier(items: trailingToolbarItems))
                 .navigationTitle(BookletLocalization.string("Booklet Maker"))
                 .navigationBarTitleDisplayMode(.inline)
         } detail: {
@@ -374,6 +388,29 @@ struct PDFFileDocument: FileDocument {
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         try FileWrapper(url: url)
+    }
+}
+
+/// 把宿主提供的工具栏项挂到当前导航栈的尾部。
+///
+/// 必须挂在**导航栈内部**的视图上：SwiftUI 的 `.toolbar` 只对最近的导航
+/// 容器生效，挂在 `NavigationStack` 外面会被外层上下文接走。
+private struct TrailingToolbarItemsModifier: ViewModifier {
+    let items: [AnyView]
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if items.isEmpty {
+            content
+        } else {
+            content.toolbar {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    ToolbarItem(placement: .topBarTrailing) {
+                        item
+                    }
+                }
+            }
+        }
     }
 }
 #endif
