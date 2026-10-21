@@ -61,8 +61,8 @@ final class MobileWorkspaceStateTests: XCTestCase {
     func testPresentationIsSingle() {
         let state = MobileWorkspaceState()
         state.documentReady()
-        state.present(.help)
-        XCTAssertEqual(state.presentation, .help)
+        state.present(.splitBatchInput)
+        XCTAssertEqual(state.presentation, .splitBatchInput)
 
         state.present(.bookletOptions)
         XCTAssertEqual(state.presentation, .bookletOptions)
@@ -72,7 +72,7 @@ final class MobileWorkspaceStateTests: XCTestCase {
     }
 
     func testPresentationIDsAreDistinctPerKind() {
-        let first = MobileWorkspaceState.Presentation.help
+        let first = MobileWorkspaceState.Presentation.splitBatchInput
         let second = MobileWorkspaceState.Presentation.bookletOptions
         let rename = MobileWorkspaceState.Presentation.splitRename(
             PDFSplitSegment(index: 1, startPage: 1, endPage: 8)

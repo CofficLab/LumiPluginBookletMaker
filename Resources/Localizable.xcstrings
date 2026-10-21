@@ -590,41 +590,6 @@
         }
       }
     },
-    "About" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "About"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "关于"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "關於"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "關於"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "關於"
-          }
-        }
-      }
-    },
     "Add at least one cut point" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -969,41 +934,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "動畫播放中…"
-          }
-        }
-      }
-    },
-    "App" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "应用"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "應用"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "應用"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "應用"
           }
         }
       }
@@ -1391,40 +1321,6 @@
         }
       }
     },
-    "BookletMaker processes every document locally on your device. No file content is uploaded or stored on any server." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BookletMaker processes every document locally on your device. No file content is uploaded or stored on any server."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BookletMaker 在你的设备本地处理所有文档，不会上传文件内容，也不会存储在任何服务器上。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BookletMaker 在你的裝置本機處理所有文件，不會上傳檔案內容，也不會儲存在任何伺服器上。"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BookletMaker 在你的裝置本機處理所有文件，不會上傳檔案內容，也不會儲存在任何伺服器上。"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BookletMaker 在你的裝置本機處理所有文件，不會上傳檔案內容，也不會儲存在任何伺服器上。"
-          }
-        }
-      }
-    },
     "Built-in demo PDF" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1698,40 +1594,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "選擇檔案夾"
-          }
-        }
-      }
-    },
-    "Choose Merge PDFs, add two or more files, drag them into the order you want, then merge them into a single PDF." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose Merge PDFs, add two or more files, drag them into the order you want, then merge them into a single PDF."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择「合并 PDF」，添加两个或更多文件，拖动调整成想要的顺序，然后合并成一个 PDF。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇「合併 PDF」，加入兩個或更多檔案，拖曳調整成想要的順序，然後合併成一個 PDF。"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇「合併 PDF」，加入兩個或更多檔案，拖曳調整成想要的順序，然後合併成一個 PDF。"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇「合併 PDF」，加入兩個或更多檔案，拖曳調整成想要的順序，然後合併成一個 PDF。"
           }
         }
       }
@@ -3821,41 +3683,6 @@
         }
       }
     },
-    "Help" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Help"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "帮助"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "說明"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "說明"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "說明"
-          }
-        }
-      }
-    },
     "How the pages come together" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4999,74 +4826,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "一個 PDF"
-          }
-        }
-      }
-    },
-    "Open a PDF, choose Booklet, and the pages are reordered so two printed sides become one folded sheet. Pick your paper, review the print sides, then export and share the result." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open a PDF, choose Booklet, and the pages are reordered so two printed sides become one folded sheet. Pick your paper, review the print sides, then export and share the result."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开 PDF，选择「小册子」，页面会重新排序，使两个打印面合成一张折叠后的纸。选择纸张、检查打印面，然后导出并分享结果。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「小冊子」，頁面會重新排序，使兩個列印面合成一張摺疊後的紙。選擇紙張、檢查列印面，然後匯出並分享結果。"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「小冊子」，頁面會重新排序，使兩個列印面合成一張摺疊後的紙。選擇紙張、檢查列印面，然後匯出並分享結果。"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「小冊子」，頁面會重新排序，使兩個列印面合成一張摺疊後的紙。選擇紙張、檢查列印面，然後匯出並分享結果。"
-          }
-        }
-      }
-    },
-    "Open a PDF, choose Split PDF, and tap between pages to mark where the file should break. Name each part, then export and share the resulting PDFs." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open a PDF, choose Split PDF, and tap between pages to mark where the file should break. Name each part, then export and share the resulting PDFs."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开 PDF，选择「拆分 PDF」，在页面之间点击以标记文件断开的位置。为每一部分命名，然后导出并分享生成的 PDF。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「分割 PDF」，在頁面之間點選以標記檔案中斷的位置。為每一部分命名，然後匯出並分享產生的 PDF。"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「分割 PDF」，在頁面之間點選以標記檔案中斷的位置。為每一部分命名，然後匯出並分享產生的 PDF。"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開啟 PDF，選擇「分割 PDF」，在頁面之間點選以標記檔案中斷的位置。為每一部分命名，然後匯出並分享產生的 PDF。"
           }
         }
       }
@@ -6354,41 +6113,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "列印面 %1$lld：第 %2$lld 與第 %3$lld 頁"
-          }
-        }
-      }
-    },
-    "Privacy" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "隐私"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "隱私"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "隱私"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "隱私"
           }
         }
       }
@@ -8438,41 +8162,6 @@
         }
       }
     },
-    "Version" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Version"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本"
-          }
-        }
-      }
-    },
     "View" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8504,108 +8193,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "檢視"
-          }
-        }
-      }
-    },
-    "View the booklet guide" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View the booklet guide"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看小册子引导"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看小冊子引導"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看小冊子引導"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看小冊子引導"
-          }
-        }
-      }
-    },
-    "View the merge guide" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View the merge guide"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看合并引导"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看合併引導"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看合併引導"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看合併引導"
-          }
-        }
-      }
-    },
-    "View the split guide" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View the split guide"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看拆分引导"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看拆分引導"
-          }
-        },
-        "zh-HK" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看拆分引導"
-          }
-        },
-        "zh-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看拆分引導"
           }
         }
       }

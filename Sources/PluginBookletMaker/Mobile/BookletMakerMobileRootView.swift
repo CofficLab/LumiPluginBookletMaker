@@ -27,7 +27,6 @@ public struct BookletMakerMobileRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isImporterPresented = false
     @State private var activeGuide: BookletGuideKind?
-    @State private var guideInitialPage = 1
     @State private var saveDocument: PDFFileDocument?
     @State private var saveFilename = "booklet"
     @State private var isSavingPresented = false
@@ -95,7 +94,7 @@ public struct BookletMakerMobileRootView: View {
                     .onAppear {
                         presentSaveExporter(for: url)
                     }
-            case .bookletOptions, .splitBatchInput, .splitRename, .help:
+            case .bookletOptions, .splitBatchInput, .splitRename:
                 EmptyView()
             }
         }
@@ -110,7 +109,6 @@ public struct BookletMakerMobileRootView: View {
         .fullScreenCover(item: $activeGuide) { kind in
             BookletGuideFlowView(
                 kind: kind,
-                initialPage: guideInitialPage,
                 onOpenPDF: {
                     // 多选与否由 `fileImporter` 按当前工具决定，这里只负责
                     // 撤下引导并把系统文件选择器拉起来。
@@ -189,13 +187,6 @@ public struct BookletMakerMobileRootView: View {
                     } label: {
                         Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
                     }
-                    NavigationLink {
-                        BookletHelpMobileView(onOpenGuide: { kind in
-                            showGuide(kind)
-                        })
-                    } label: {
-                        Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
-                    }
                     Button(role: .destructive) {
                         feature.closeDocument()
                     } label: {
@@ -249,13 +240,6 @@ public struct BookletMakerMobileRootView: View {
                 } label: {
                     Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
                 }
-                NavigationLink {
-                    BookletHelpMobileView(onOpenGuide: { kind in
-                        showGuide(kind)
-                    })
-                } label: {
-                    Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
-                }
                 Button(role: .destructive) {
                     feature.closeDocument()
                 } label: {
@@ -275,12 +259,11 @@ public struct BookletMakerMobileRootView: View {
 
     /// 打开引导，并保证工作台已经准备好对应的工具。
     ///
-    /// 引导有两个入口：首页的工具卡，以及帮助页的「再看一次引导」。
-    /// 后者不带工具信息，所以这里统一补一次工具选择——否则引导结束时
-    /// 打开的文件会落进默认工具的工作台。
-    private func showGuide(_ kind: BookletGuideKind, startingAt page: Int = 1) {
+    /// 引导从第 1 页开始（`BookletGuideFlowView` 自行按工具钳制页码），
+    /// 这里统一补一次工具选择——否则引导结束时打开的文件会落进
+    /// 默认工具的工作台。
+    private func showGuide(_ kind: BookletGuideKind) {
         prepareTool(for: kind)
-        guideInitialPage = page
         activeGuide = kind
     }
 

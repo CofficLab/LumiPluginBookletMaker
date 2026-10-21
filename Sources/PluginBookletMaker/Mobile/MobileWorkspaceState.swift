@@ -40,7 +40,6 @@ final class MobileWorkspaceState: ObservableObject {
         case bookletOptions
         case splitBatchInput
         case splitRename(PDFSplitSegment)
-        case help
         case shareBooklet(URL)
         case shareSplit([URL])
         case shareMerge(URL)
@@ -53,7 +52,6 @@ final class MobileWorkspaceState: ObservableObject {
             case .bookletOptions: "bookletOptions"
             case .splitBatchInput: "splitBatchInput"
             case .splitRename(let segment): "splitRename-\(segment.rangeKey)"
-            case .help: "help"
             case .shareBooklet(let url): "shareBooklet-\(url.path)"
             case .shareSplit(let urls): "shareSplit-\(urls.map(\.path).joined(separator: "|"))"
             case .shareMerge(let url): "shareMerge-\(url.path)"

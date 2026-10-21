@@ -45,7 +45,6 @@ enum BookletGuideKind: String, Identifiable, Equatable {
 /// 完成后由根视图推进到对应工具的工作台。
 struct BookletGuideFlowView: View {
     let kind: BookletGuideKind
-    let initialPage: Int
     let onOpenPDF: () -> Void
     let onUseSample: () -> Void
     let onDismiss: () -> Void
@@ -54,17 +53,15 @@ struct BookletGuideFlowView: View {
 
     init(
         kind: BookletGuideKind,
-        initialPage: Int = 1,
         onOpenPDF: @escaping () -> Void,
         onUseSample: @escaping () -> Void,
         onDismiss: @escaping () -> Void
     ) {
         self.kind = kind
-        self.initialPage = initialPage
         self.onOpenPDF = onOpenPDF
         self.onUseSample = onUseSample
         self.onDismiss = onDismiss
-        _page = State(initialValue: min(max(initialPage, 1), kind.pageCount))
+        _page = State(initialValue: 1)
     }
 
     /// 进度条上的当前步：booklet / merge 的两步对应 1 与末步之前的进度，
