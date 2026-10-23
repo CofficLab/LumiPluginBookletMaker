@@ -58,14 +58,13 @@ final class BookletMakerMobileToolSwitchUITests: BookletMakerMobileUITestCase {
     /// 或者某个入口缺失，都是真实的可用性缺陷。
     func testEveryToolEntryOpensItsOwnPage() {
         openSampleDocument(tool: "booklet")
-        assertExists("booklet.readingPicker")
-        assertExists("booklet.export")
+        assertExists("booklet.stageTitle")
+        assertExists("booklet.stepNext")
 
         backToWelcome()
         openSampleDocument(tool: "split")
-        assertExists("split.readingPicker")
         assertExists("split.export")
-        assertNotExists("booklet.export")
+        assertNotExists("booklet.stageTitle")
 
         // 合并改用注入队列进入：引导页没有示例入口，且注入后首页不再出现。
         closeDocument()
@@ -117,7 +116,8 @@ final class BookletMakerMobileToolSwitchUITests: BookletMakerMobileUITestCase {
     /// 之外运行，XCUITest 无法驱动。
     func testSampleDocumentEnablesEveryTool() {
         openSampleDocument(tool: "booklet")
-        assertEnabled("booklet.export")
+        // 六步向导的主操作按钮（走到导出阶段即变为「制作小册子」）。
+        assertEnabled("booklet.stepNext")
 
         backToWelcome()
         openSampleDocument(tool: "split")

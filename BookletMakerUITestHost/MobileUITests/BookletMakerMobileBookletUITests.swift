@@ -1,77 +1,106 @@
 import XCTest
 
-/// 小册子（Booklet）工具在移动端的参数面板与拼版预览。
+/// 小册子（Booklet）工具在移动端的六步向导。
 ///
-/// 移动端没有 macOS 侧栏那套预览阶段 tab，取而代之的是六阶段横向指示器
-/// （`stage.1` … `stage.6`）与参数面板。因此这里覆盖的是：阶段切换、
-/// 参数控件的绑定与门控、拼版预览的页序正确性。
+/// 移动端是「拼版预览 → 纸张与版式 → 总览 → 导出」的六步向导，阶段由
+/// 底部「上一步 / 下一步」线性推进，每一屏只回答一件事（产品原型
+/// `03-print-layout` … `07-export-booklet`）。因此这里覆盖的是：阶段推进、
+/// 每张纸的正反面切换、参数面板的绑定与门控、拼版页序正确性。
 final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        // 主线已是「首页工具卡 → 引导页 → 工作台」，没有概览页这一层。
+        // 主线是「首页工具卡 → 引导页 → 工作台」，没有概览页这一层。
         openSampleDocument(tool: "booklet")
     }
 
-    /// 六个预览阶段指示器都存在，逐个点击后各自呈现对应内容。
+    /// 六步向导的阶段标题随步骤线性变化。
     ///
-    /// ## 为什么断言「内容」而不是「选中态」
-    ///
-    /// 阶段指示器是横向轨道上的按钮，SwiftUI 对**被裁剪**元素的
-    /// `isSelected` trait 报告不可靠：实测屏幕外的 `stage.5` 会恒被报成
-    /// 「已选中」，即便真正选中的是 `stage.1`。这类 trait 断言会持续误报，
-    /// 逼着人往测试里塞越来越脆弱的补偿逻辑。
-    ///
-    /// 改为断言每个阶段**实际呈现的内容**——这既是用户真正感知到的行为，
-    /// 也完全绕开了 trait 的报告缺陷：
-    ///
-    /// | 阶段 | 内容 |
-    /// |---|---|
-    /// | 1 打印布局 | 拼版预览（`booklet.sheet.*`） |
-    /// | 2 纸张 / 3 裁切 | 参数面板（`params.*`） |
-    /// | 4 装订 | 折叠演示（`params.layout` 不在此页） |
-    /// | 5 总览 / 6 导出 | 汇总 + 导出按钮（`booklet.exportStage`） |
-    func testAllStagesRenderTheirOwnContent() {
-        // 1 打印布局：拼版预览
-        XCTAssertTrue(scrollHorizontallyTo("stage.1"))
-        element("stage.1").tap()
-        XCTAssertTrue(
-            scrollTo("booklet.sheet.0"),
-            "阶段 1 应展示拼版预览。\(app.debugDescription)"
-        )
+    /// 回归重点：阶段曾被换成「顶部一排标签页 + 两列缩略图网格」，
+    /// 与产品原型的逐屏向导完全不符。这里断言阶段标题，确保线性推进结构
+    /// 不再被悄悄改回标签页。
+    func testStageTitleAdvancesWithEachStep() {
+        let stageTitle = element("booklet.stageTitle")
+        XCTAssertTrue(stageTitle.waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertEqual(text(of: stageTitle), "Print Layout")
 
-        // 2 纸张：参数面板
-        XCTAssertTrue(scrollHorizontallyTo("stage.2"))
-        element("stage.2").tap()
-        XCTAssertTrue(
-            scrollTo("params.paper"),
-            "阶段 2 应展示参数面板。\(app.debugDescription)"
-        )
+        let next = app.buttons["booklet.stepNext"]
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "缺少底部「下一步」按钮")
 
-        // 3 裁切：仍是参数面板，但裁切开关在其中
-        XCTAssertTrue(scrollHorizontallyTo("stage.3"))
-        element("stage.3").tap()
-        XCTAssertTrue(
-            scrollTo("params.cutMarks"),
-            "阶段 3 应展示裁切相关设置。\(app.debugDescription)"
-        )
+        next.tap()
+        XCTAssertEqual(waitForText(of: stageTitle, toBe: "Paper and Layout"), "Paper and Layout")
 
-        // 4 装订：折叠演示，参数面板不再呈现
-        XCTAssertTrue(scrollHorizontallyTo("stage.4"))
-        element("stage.4").tap()
-        assertNotExists("params.cutMarks")
+        next.tap()
+        XCTAssertEqual(waitForText(of: stageTitle, toBe: "Review"), "Review")
 
-        // 6 导出：汇总 + 导出按钮
-        // 移动端的导出按钮常驻底栏，标识符是 `booklet.export`
-        // （`booklet.exportStage` 是 macOS 逐阶段内容区里的标识符）。
-        XCTAssertTrue(scrollHorizontallyTo("stage.6"))
-        element("stage.6").tap()
-        assertEnabled("booklet.export")
+        next.tap()
+        XCTAssertEqual(waitForText(of: stageTitle, toBe: "Export"), "Export")
     }
+
+    /// 每张物理纸都能切到背面。
+    ///
+    /// 双面打印的背面此前被静默砍掉：预览只给正面，用户无从确认折起来
+    /// 之后页序是否正确 —— 而这正是小册子最容易出错的地方。
+    func testEverySheetOffersFrontAndBack() {
+        // 示例文档 8 页 → 2 张纸，每张纸都有正反两面。
+        XCTAssertTrue(
+            scrollTo("booklet.side.0.back"),
+            "第 1 张纸应提供「背面」切换。\(app.debugDescription)"
+        )
+        XCTAssertTrue(scrollTo("booklet.side.1.back"), "第 2 张纸应提供「背面」切换")
+
+        // 切到背面后，页面配对应变成内侧的两页。
+        element("booklet.side.0.back").tap()
+        let back = text(of: element("booklet.side.0.back"))
+        XCTAssertTrue(
+            back.contains("2 and 7"),
+            "第 1 张纸的背面应为页 2 与 7，实际为「\(back)」。\(app.debugDescription)"
+        )
+    }
+
+    /// 拼版预览的页序正确。
+    ///
+    /// 直接读 accessibilityLabel：它由代码显式拼成「Print side N: pages X and Y」，
+    /// 是拼版引擎输出最直接的体现。
+    ///
+    /// ## 为什么第 1 面是「8 和 1」而不是「1 和 8」
+    ///
+    /// 侧别与页序的对应由 `OutputSheet` 决定，`leftPage` 落在纸张左侧。
+    /// 8 页书本折叠时，第 1 个打印面的左侧是末页 8、右侧是首页 1——这正是
+    /// 对折后能顺读的原因（把第 1 面朝上折，末页落在外侧）。
+    func testPrintSideLabelsCarryCorrectPagePairs() {
+        // 正面：(8,1) 与 (6,3)；背面：(2,7) 与 (4,5)。
+        let expected: [(front: (Int, Int), back: (Int, Int))] = [
+            ((8, 1), (2, 7)),
+            ((6, 3), (4, 5))
+        ]
+
+        for (index, sides) in expected.enumerated() {
+            XCTAssertTrue(
+                scrollTo("booklet.side.\(index).front"),
+                "缺少第 \(index + 1) 张纸的正面。\(app.debugDescription)"
+            )
+            let front = text(of: element("booklet.side.\(index).front"))
+            XCTAssertTrue(
+                front.contains("\(sides.front.0) and \(sides.front.1)"),
+                "第 \(index + 1) 张纸正面应为页 \(sides.front.0) 与 \(sides.front.1)，"
+                    + "实际为「\(front)」。\(app.debugDescription)"
+            )
+
+            element("booklet.side.\(index).back").tap()
+            let back = text(of: element("booklet.side.\(index).back"))
+            XCTAssertTrue(
+                back.contains("\(sides.back.0) and \(sides.back.1)"),
+                "第 \(index + 1) 张纸背面应为页 \(sides.back.0) 与 \(sides.back.1)，"
+                    + "实际为「\(back)」。\(app.debugDescription)"
+            )
+        }
+    }
+
     /// 参数面板的纸张、版式与间距控件均可见可用。
     func testParameterControlsArePresent() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.2"))
-        element("stage.2").tap()
+        // 第 2 步是「纸张与版式」。
+        element("booklet.stepNext").tap()
 
         XCTAssertTrue(scrollTo("params.paper"), "缺少输出纸张设置")
         XCTAssertTrue(scrollTo("params.layout"), "缺少版式设置")
@@ -81,13 +110,31 @@ final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
         XCTAssertTrue(scrollTo("params.padBlank"), "缺少补白开关")
     }
 
+    /// 分册版式可选，并提供「每册页数」。
+    ///
+    /// 回归重点：分册版式（`signatureFold`）在共享包迁移时被从参数面板里
+    /// 删掉了，只剩折叠与简单并排两种，长文档无法拆成可独立装订的小册。
+    func testSectionedBookletLayoutIsSelectable() {
+        element("booklet.stepNext").tap()
+        XCTAssertTrue(scrollTo("params.layout"), "缺少版式设置")
+
+        element("params.layout").tap()
+        let sectioned = app.buttons["Sectioned Booklet"]
+        XCTAssertTrue(sectioned.waitForExistence(timeout: 10), app.debugDescription)
+        sectioned.tap()
+
+        XCTAssertTrue(
+            scrollTo("params.signaturePages"),
+            "分册版式应提供「每册页数」选择器。\(app.debugDescription)"
+        )
+    }
+
     /// 补白开关在书本折叠版式下强制禁用。
     ///
     /// 对应 ViewModel 的业务规则：bookletFold 本身已按 4 的倍数补页，
     /// 再叠加补白会产生重复空白。允许用户开启会导致页数与预览不一致。
     func testPadBlankDisabledUnderBookletFold() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.2"))
-        element("stage.2").tap()
+        element("booklet.stepNext").tap()
         assertDisabled("params.padBlank")
 
         // 切到简单对折版式后应可用。
@@ -104,120 +151,42 @@ final class BookletMakerMobileBookletUITests: BookletMakerMobileUITestCase {
         assertEnabled("params.padBlank")
     }
 
-    /// 底部摘要如实反映页数与预计纸张数。
+    /// 总览阶段保留翻页跨页预览。
     ///
-    /// 示例文档为 8 页，书本折叠下需 2 张纸（每张正反两面共 4 个打印面）。
-    /// 摘要与实际拼版不一致会直接误导用户对成品页数的预期。
-    func testSummaryReflectsDocumentAndSheetCount() {
-        assertExists("booklet.summary")
-
-        let summary = text(of: element("booklet.summary"))
-        XCTAssertEqual(
-            summary, "8 pages · 2 sheets · A4",
-            "底部摘要应如实反映页数、纸张数与纸张规格"
+    /// 这是「折起来能不能顺读」的唯一可视检查点。
+    func testReviewStageKeepsTheFlipPreview() {
+        element("booklet.stepNext").tap()  // 纸张与版式
+        element("booklet.stepNext").tap()  // 总览
+        XCTAssertTrue(
+            app.staticTexts["Preview the booklet"].waitForExistence(timeout: 10),
+            "总览页应保留翻页跨页预览。\(app.debugDescription)"
         )
     }
 
-    /// 拼版预览按打印顺序展示全部四个打印面。
-    ///
-    /// 8 页 / 2 张纸 = 4 个打印面。四个面按 2 列网格平铺，第二行在首屏之外，
-    /// 必须纵向滚动才能进入快照——`LazyVGrid` 只构造已进入视口的项。
-    func testImpositionShowsEveryPrintSideInOrder() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.1"))
-        element("stage.1").tap()
+    /// 导出阶段提供分享与保存。
+    func testExportStageOffersShareAndSave() {
+        element("booklet.stepNext").tap()  // 纸张与版式
+        element("booklet.stepNext").tap()  // 总览
+        element("booklet.stepNext").tap()  // 导出
 
-        for index in 0..<4 {
-            XCTAssertTrue(
-                scrollTo("booklet.sheet.\(index)"),
-                "缺少第 \(index + 1) 个打印面。\(app.debugDescription)"
-            )
+        XCTAssertTrue(
+            app.buttons["Share"].waitForExistence(timeout: 30),
+            "导出阶段应提供「分享」。\(app.debugDescription)"
+        )
+        XCTAssertTrue(app.buttons["Save to Files"].exists, "导出阶段应提供「保存到文件」")
+    }
+
+    /// 等待某个元素的文案变成期望值。
+    private func waitForText(
+        of element: XCUIElement,
+        toBe expected: String,
+        timeout: TimeInterval = 10
+    ) -> String {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if text(of: element) == expected { return expected }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         }
-    }
-
-    /// 打印面与其承载的页码配对正确。
-    ///
-    /// 直接读 accessibilityLabel：它由代码显式拼成「Print side N: pages X and Y」，
-    /// 是拼版引擎输出最直接的体现。
-    ///
-    /// ## 为什么第 1 面是「8 和 1」而不是「1 和 8」
-    ///
-    /// 侧别与页序的对应由 `OutputSheet` 决定，`leftPage` 落在纸张左侧。
-    /// 8 页书本折叠时，第 1 个打印面的左侧是末页 8、右侧是首页 1——这正是
-    /// 对折后能顺读的原因（把第 1 面朝上折，末页落在外侧）。
-    /// 第 2 面则是内侧的 (2, 7)。
-    ///
-    /// 只比对数字部分：标签文案随语言变化，数字不变。
-    func testPrintSideLabelsCarryCorrectPagePairs() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.1"))
-        element("stage.1").tap()
-
-        XCTAssertTrue(scrollTo("booklet.sheet.0"), "缺少第 1 个打印面")
-        let first = text(of: element("booklet.sheet.0"))
-        XCTAssertTrue(
-            first.contains("8 and 1"),
-            "第 1 面应为页 8 与 1，实际为「\(first)」。\(app.debugDescription)"
-        )
-
-        XCTAssertTrue(scrollTo("booklet.sheet.1"), "缺少第 2 个打印面")
-        let second = text(of: element("booklet.sheet.1"))
-        XCTAssertTrue(
-            second.contains("2 and 7"),
-            "第 2 面应为页 2 与 7，实际为「\(second)」。\(app.debugDescription)"
-        )
-    }
-
-    /// 背面打印面的页码配对同样正确。
-    ///
-    /// 前两面覆盖了外层纸张；背面 (6,3) 与 (4,5) 是折进来后才可见的部分，
-    /// 它们错乱同样会让成品无法顺读，因此单独断言。
-    func testBackSideLabelsCarryCorrectPagePairs() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.1"))
-        element("stage.1").tap()
-
-        XCTAssertTrue(scrollTo("booklet.sheet.2"), "缺少第 3 个打印面")
-        let third = text(of: element("booklet.sheet.2"))
-        XCTAssertTrue(
-            third.contains("6 and 3"),
-            "第 3 面应为页 6 与 3，实际为「\(third)」。\(app.debugDescription)"
-        )
-
-        XCTAssertTrue(scrollTo("booklet.sheet.3"), "缺少第 4 个打印面")
-        let fourth = text(of: element("booklet.sheet.3"))
-        XCTAssertTrue(
-            fourth.contains("4 and 5"),
-            "第 4 面应为页 4 与 5，实际为「\(fourth)」。\(app.debugDescription)"
-        )
-    }
-
-    /// 「打印布局 / 原稿」分段切换可用。
-    func testReadingSegmentSwitches() {
-        assertExists("booklet.readingPicker")
-        assertExists("booklet.export")
-
-        // 切到原稿视图：拼版预览消失，底部操作区仍在。
-        let source = app.buttons["Original PDF"]
-        XCTAssertTrue(source.waitForExistence(timeout: 10), app.debugDescription)
-        source.tap()
-
-        XCTAssertTrue(
-            element("booklet.export").waitForExistence(timeout: 10),
-            "切到原稿视图后底部操作区消失。\(app.debugDescription)"
-        )
-    }
-
-    /// 总览阶段的导出按钮在有文档时可用。
-    ///
-    /// ## 为什么断言的是 `booklet.export` 而不是 `booklet.exportStage`
-    ///
-    /// `booklet.exportStage` 是 macOS `BookletPreviewStageView` 第 6 阶段
-    /// 里的按钮标识符。移动端没有逐阶段的独立内容区——导出按钮常驻在
-    /// 底栏，标识符是 `booklet.export`（见 `BookletPreviewMobileView`）。
-    ///
-    /// 阶段指示器在移动端仍然存在（`stage.1` … `stage.6`），点 `stage.6`
-    /// 后底栏的导出按钮依然可用，因此这里先切到导出阶段再断言按钮启用。
-    func testExportEnabledOnReviewStage() {
-        XCTAssertTrue(scrollHorizontallyTo("stage.6"))
-        element("stage.6").tap()
-        assertEnabled("booklet.export")
+        return text(of: element)
     }
 }
