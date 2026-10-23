@@ -244,6 +244,9 @@ struct BookletPreviewStageView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        // 稳定锚点：UI 测试据此验证「每张纸的正反面都能切换」——
+        // 双面打印的背面此前被静默砍掉，只剩正面可看。
+        .accessibilityIdentifier("booklet.side.\(sheet.index).\(side.rawValue)")
     }
 
     private func pairCaption(_ sheet: OutputSheet) -> String {

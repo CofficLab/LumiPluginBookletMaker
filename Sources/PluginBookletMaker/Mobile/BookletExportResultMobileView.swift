@@ -69,11 +69,13 @@ struct BookletExportResultMobileView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("exportResult.share")
                     Button { feature.presentSave() } label: {
                         Label(BookletLocalization.string("Save to Files"), systemImage: "folder")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("exportResult.save")
                 }
                 .controlSize(.large)
 
@@ -88,6 +90,7 @@ struct BookletExportResultMobileView: View {
                     } label: {
                         actionRow(BookletLocalization.string("Adjust settings and export again"), icon: "slider.horizontal.3")
                     }
+                    .accessibilityIdentifier("exportResult.adjustSettings")
                     Divider().padding(.leading, 46)
                     Button {
                         feature.dismissExportResult(selecting: isSplit ? .booklet : .split)
@@ -97,12 +100,14 @@ struct BookletExportResultMobileView: View {
                                   : BookletLocalization.string("Split this PDF instead"),
                                   icon: isSplit ? "book.closed" : "scissors")
                     }
+                    .accessibilityIdentifier("exportResult.switchTool")
                     Divider().padding(.leading, 46)
                     NavigationLink {
                         BookletHelpMobileView()
                     } label: {
                         actionRow(BookletLocalization.string("View the guide"), icon: "questionmark.circle")
                     }
+                    .accessibilityIdentifier("exportResult.viewGuide")
                 }
                 .buttonStyle(.plain)
                 .background(BookletMobileStyle.card, in: RoundedRectangle(cornerRadius: 14))

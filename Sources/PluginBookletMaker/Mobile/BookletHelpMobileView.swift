@@ -133,6 +133,7 @@ struct BookletHelpMobileView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(BookletMobileStyle.accent)
+        .accessibilityIdentifier("help.guide.\(kind.rawValue)")
     }
 
     private var versionString: String {
