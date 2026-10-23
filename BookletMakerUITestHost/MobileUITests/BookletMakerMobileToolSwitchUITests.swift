@@ -100,9 +100,15 @@ final class BookletMakerMobileToolSwitchUITests: BookletMakerMobileUITestCase {
 
         backToWelcome()
         openSampleDocument(tool: "booklet")
+        // 六步向导的主操作按钮在第 1 步是「下一步」，走到导出阶段才变成
+        // 「制作小册子」。这里断言的是向导结构本身，不是某一个阶段的文案。
         XCTAssertTrue(
-            localizedText("Make Booklet").exists,
-            "小册子工具下主按钮应为「Make Booklet」。\(app.debugDescription)"
+            localizedText("Next").exists,
+            "小册子工具下主按钮应为「下一步」。\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            localizedText("Merge").exists,
+            "小册子工具下不应残留合并文案。\(app.debugDescription)"
         )
     }
 

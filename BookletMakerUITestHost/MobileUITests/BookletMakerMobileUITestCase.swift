@@ -128,10 +128,15 @@ class BookletMakerMobileUITestCase: XCTestCase {
             if goingForward { triedForward = true } else { triedBackward = true }
             Thread.sleep(forTimeInterval: 0.6)
 
-            // 单向推进若干次仍未命中，掉头回找，避免来回震荡。
+            // 单向推进若干次仍未命中，判断目标在视口的哪一侧再决定要不要掉头。
+            //
+            // 目标在**上方**（maxY < 400）说明已经滑过头了，要往回滑；
+            // 目标在**下方**（minY > 700）说明还没滑到，必须继续往下走 ——
+            // 早先这里把两种情况一视同仁地掉头，结果目标在屏幕下方时
+            // 反而越滑越远，永远够不到（拼版预览的第二张纸就卡在这里）。
             if goingForward && triedForward && !triedBackward {
                 let frame = target.exists ? target.frame : .zero
-                if frame.maxY < 400 || frame.minY > 700 {
+                if frame.maxY < 400 {
                     goingForward = false
                 }
             }

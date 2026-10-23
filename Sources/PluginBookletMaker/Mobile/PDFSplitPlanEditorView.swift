@@ -53,6 +53,13 @@ struct PDFSplitPlanEditorView: View {
                                                Int64(viewModel.splitCutPoints.count),
                                                Int64(viewModel.splitSegments.count)))
                     .font(.footnote.weight(.medium))
+                    // 稳定锚点：切分点与文件数的变化必须被 UI 测试看得到，
+                    // 否则「点了切分点但摘要没变」这类回归无从发现。
+                    //
+                    // 锚点挂在 Text 上而不是外层 HStack：SwiftUI 会把
+                    // identifier 下推到子元素，挂在容器上会落到剪刀图标上，
+                    // 读出来的是 "Cut" 而不是摘要文案。
+                    .accessibilityIdentifier("split.summary")
                 Spacer()
             }
             .padding(10)
@@ -72,6 +79,7 @@ struct PDFSplitPlanEditorView: View {
             }
             .disabled(visiblePairStart <= 1)
             .accessibilityLabel(BookletLocalization.string("Previous"))
+            .accessibilityIdentifier("split.pagePrevious")
 
             Spacer()
             Text(BookletLocalization.string("Pages %lld–%lld",
@@ -79,6 +87,7 @@ struct PDFSplitPlanEditorView: View {
                                            Int64(min(visiblePairStart + 1, pageCount))))
                 .font(.caption.weight(.medium).monospacedDigit())
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("split.pageRange")
             Spacer()
 
             Button {
@@ -89,6 +98,7 @@ struct PDFSplitPlanEditorView: View {
             }
             .disabled(visiblePairStart >= max(pageCount - 1, 1))
             .accessibilityLabel(BookletLocalization.string("Next"))
+            .accessibilityIdentifier("split.pageNext")
         }
         .buttonStyle(.plain)
         .foregroundStyle(BookletMobileStyle.accent)

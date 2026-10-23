@@ -59,24 +59,43 @@ final class BookletMakerMobileSplitUITests: BookletMakerMobileUITestCase {
     ///
     /// 只记「最后一次点击」的实现会让前面的切分点被静默丢弃，用户会拿到
     /// 与预览不符的输出。
+    ///
+    /// 切分点标在两页之间，一次只显示当前这一对页面，因此第二个切分点
+    /// 需要先翻到第 3、4 页那对。
     func testMultipleCutPointsAreIndependent() {
-        for page in [1, 3] {
-            XCTAssertTrue(scrollTo("split.boundary.\(page)"), "缺少第 \(page) 页后的切分点")
-            element("split.boundary.\(page)").tap()
-        }
-
+        XCTAssertTrue(scrollTo("split.boundary.1"), "缺少第 1 页后的切分点")
+        element("split.boundary.1").tap()
         assertSplitAfter("split.boundary.1")
+
+        // 翻到第 3、4 页那对，在第 3 页之后加第二个切分点。
+        navigateToPair(startingAt: 3)
+        XCTAssertTrue(scrollTo("split.boundary.3"), "缺少第 3 页后的切分点")
+        element("split.boundary.3").tap()
         assertSplitAfter("split.boundary.3")
+
+        // 翻回第一对，第一个切分点仍在。
+        navigateToPair(startingAt: 1)
+        assertSplitAfter("split.boundary.1")
     }
 
-    /// 最后一个页面之后不能切分。
+    /// 最后一页之后没有切分点。
     ///
-    /// 在最后一页之后切分会产出一个空文件；按钮应当被禁用而不是让用户
-    /// 点出空结果。
-    func testBoundaryAfterLastPageIsDisabled() {
-        // 8 页文档，最后一页是第 8 页。
-        XCTAssertTrue(scrollTo("split.boundary.8"), app.debugDescription)
-        assertDisabled("split.boundary.8")
+    /// 在第 8 页之后切分会产出一个空文件，因此翻到最后一对时，第 8 页
+    /// 后面必须没有剪刀可用。
+    func testNoSplitPointAfterTheLastPage() {
+        // 8 页文档，最后一对是第 7、8 页。
+        navigateToPair(startingAt: 7)
+        XCTAssertTrue(scrollTo("split.boundary.7"), app.debugDescription)
+
+        // 第 7 页后的切分点合法（第 8 页单独成文件）。
+        assertEnabled("split.boundary.7")
+
+        // 但「下一页」已到尽头：翻不动了，也就没有第 8 页之后的切分点。
+        assertDisabled("split.pageNext")
+        XCTAssertFalse(
+            element("split.boundary.8").exists,
+            "最后一页之后不应有切分点。\(app.debugDescription)"
+        )
     }
 
     /// 分段摘要随切分点变化，如实反映分段结构。
@@ -86,12 +105,19 @@ final class BookletMakerMobileSplitUITests: BookletMakerMobileUITestCase {
             "拆分页缺少结果摘要。\(app.debugDescription)"
         )
 
+        // 初始状态：0 个切分点 → 1 个文件。
+        XCTAssertTrue(
+            waitForSummary(to: "0 split points · 1 files"),
+            "初始摘要应为「0 split points · 1 files」，"
+                + "实际为「\(text(of: element("split.summary")))」。\(app.debugDescription)"
+        )
+
         XCTAssertTrue(scrollTo("split.boundary.1"))
         element("split.boundary.1").tap()
 
         XCTAssertTrue(
-            waitForSummary(to: "8 pages → 2 files"),
-            "一个切分点后摘要应为「8 pages → 2 files」，"
+            waitForSummary(to: "1 split points · 2 files"),
+            "一个切分点后摘要应为「1 split points · 2 files」，"
                 + "实际为「\(text(of: element("split.summary")))」。\(app.debugDescription)"
         )
         assertEnabled("split.export")
@@ -99,15 +125,70 @@ final class BookletMakerMobileSplitUITests: BookletMakerMobileUITestCase {
 
     // MARK: - Helpers
 
+    /// 滑动到从 `page` 开始的那一对页面。
+    ///
+    /// 拆分页一次只显示相邻两页，切分点标在它们之间，所以要看第 N 页
+    /// 之后的切分点，得先把视图滑到第 N 页。
+    private func navigateToPair(startingAt page: Int) {
+        let target = "split.boundary.\(page)"
+        // 一次只显示当前这一对页面，切分点标在两页之间，所以要看第 N 页
+        // 之后的切分点，得先把视图翻到第 N 页。
+        //
+        // 翻页用「下一页 / 上一页」两个按钮：目标可能在当前这一对的右边，
+        // 也可能在左边，方向不能想当然。页码范围文案（`split.pageRange`，
+        // 形如 "Pages 3–4"）用来判断当前停在哪。
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline {
+            if element(target).waitForExistence(timeout: 0.5) {
+                return
+            }
+
+            let range = element("split.pageRange")
+            let current = currentPairStart(from: range)
+            if let current {
+                if current < page {
+                    let next = app.buttons["split.pageNext"]
+                    guard next.exists, next.isHittable else { break }
+                    next.tap()
+                } else {
+                    let previous = app.buttons["split.pagePrevious"]
+                    guard previous.exists, previous.isHittable else { break }
+                    previous.tap()
+                }
+            } else {
+                // 读不到页码文案时先试试「下一页」。
+                let next = app.buttons["split.pageNext"]
+                guard next.exists, next.isHittable else { break }
+                next.tap()
+            }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        _ = scrollTo(target)
+    }
+
+    /// 从页码范围文案里解析当前这一对的起始页。
+    ///
+    /// 文案形如 "Pages 3–4"（本地化后可能是别的措辞），取第一个数字即可。
+    private func currentPairStart(from range: XCUIElement) -> Int? {
+        let label = range.label
+        let digits = label.compactMap { $0.wholeNumberValue }
+        guard let first = digits.first else { return nil }
+        return first
+    }
+
     /// 判断某处是否处于「在此页之后切分」状态。
     ///
     /// 读 accessibilityLabel：它由 `PDFSplitPlanEditorView` 显式拼成
-    /// 「Split after page N」/「Remove split after page N」，是切分状态的
-    /// 直接来源。轮询直到达到期望值，或超时返回 false。
+    /// 「Split after page N」/「Remove split after page N」。
     ///
-    /// 必须把「期望状态」显式传进来：只等 `split after` 的话，取消切分点
-    /// 的用例会立刻因读到 `remove` 而拿到 false——断言看似通过，实际
-    /// 什么都没验证。
+    /// 注意语义方向：label 描述的是**点击后将发生的动作**，不是当前状态 ——
+    /// 已经切分的地方显示「Remove split after page N」（点了会取消），
+    /// 没切的地方显示「Split after page N」（点了会切）。因此「已切分」
+    /// 对应的是带 `remove` 的那个 label。
+    ///
+    /// 必须把「期望状态」显式传进来：只等一个关键词的话，取消切分点的
+    /// 用例会立刻误判——`remove split after page` 本身就包含
+    /// `split after page`，两条路径会同时命中。
     private func waitForSplitState(
         of identifier: String,
         equals expected: Bool,
@@ -118,14 +199,14 @@ final class BookletMakerMobileSplitUITests: BookletMakerMobileUITestCase {
         _ = scrollTo(identifier, timeout: timeout)
 
         let deadline = Date().addingTimeInterval(timeout)
-        let splitLabel = "split after page"
         let removeLabel = "remove split after page"
         while Date() < deadline {
             let label = element(identifier).label.lowercased()
+            // 已切分 ⇔ label 带 `remove`。
             if label.contains(removeLabel) {
-                if !expected { return true }
-            } else if label.contains(splitLabel) {
                 if expected { return true }
+            } else if label.contains("split after page") {
+                if !expected { return true }
             }
             Thread.sleep(forTimeInterval: 0.3)
         }

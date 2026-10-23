@@ -145,7 +145,11 @@ struct BookletPreviewStageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     paperPickerCard
-                    LazyVStack(spacing: 6) {
+                    // 用 VStack 而不是 LazyVStack：打印面数量是页数的四分之一
+                    // （8 页 → 2 张纸 → 2 个面），规模有限；而 LazyVStack 只
+                    // 构造进入视口的项，屏幕外的打印面根本不在可访问性树里，
+                    // 读屏用户和 UI 测试都拿不到它们。
+                    VStack(spacing: 6) {
                         ForEach(physicalSheets, id: \.index) { physicalSheet in
                             physicalSheetCard(physicalSheet, paperWidth: paperWidth)
                         }
@@ -214,6 +218,10 @@ struct BookletPreviewStageView: View {
                 "Print side %lld: pages %lld and %lld",
                 Int64(outputSide.index + 1), Int64(outputSide.leftPage), Int64(outputSide.rightPage)
             ))
+            // 稳定锚点：打印面的序号就是拼版引擎的输出顺序，UI 测试据此
+            // 逐面核对页码配对。按钮上的锚点只覆盖「当前这一张纸」，
+            // 换到背面后就换了内容，因此面序要另开一个锚点。
+            .accessibilityIdentifier("booklet.printSide.\(outputSide.index)")
         }
         .padding(.horizontal, 10)
         .padding(.top, 6)
@@ -247,6 +255,12 @@ struct BookletPreviewStageView: View {
         // 稳定锚点：UI 测试据此验证「每张纸的正反面都能切换」——
         // 双面打印的背面此前被静默砍掉，只剩正面可看。
         .accessibilityIdentifier("booklet.side.\(sheet.index).\(side.rawValue)")
+        // 标签带上这一面的页码：只说「正面 / 背面」的话，读屏用户切到
+        // 背面也不知道那一面印的是哪两页。
+        .accessibilityLabel(
+            "\(side == .front ? BookletLocalization.string("Front") : BookletLocalization.string("Back")): "
+                + pairCaption(side == .back ? (sheet.back ?? sheet.front) : sheet.front)
+        )
     }
 
     private func pairCaption(_ sheet: OutputSheet) -> String {
