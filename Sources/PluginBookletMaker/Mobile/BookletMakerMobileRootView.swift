@@ -183,23 +183,7 @@ public struct BookletMakerMobileRootView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        isImporterPresented = true
-                    } label: {
-                        Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    Button(role: .destructive) {
-                        feature.closeDocument()
-                    } label: {
-                        Label(BookletLocalization.string("Close Current PDF"), systemImage: "xmark.circle")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel(BookletLocalization.string("Document menu"))
-            }
+            homeToolbarItem
         }
     }
 
@@ -224,44 +208,30 @@ public struct BookletMakerMobileRootView: View {
                 )
             }
         }
-        // 文档菜单在所有阶段常驻。
+        // 首页按钮只在工作台阶段出现。
         //
         // 工作台必须自带它：iPhone 上工作台是导航栈的栈顶根页，没有返回
-        // 按钮，而 `closeDocument` 只挂在 iPad 侧栏上。不给工作台挂菜单，
-        // 用户打开文件后就再也回不到首页，只能杀进程重启——这是真实的
-        // 单向故障。首页则复用同一份，避免同一屏出现两个「更多」。
-        .toolbar { documentMenu }
+        // 按钮。不给工作台挂首页按钮，用户打开文件后就再也回不到首页，
+        // 只能杀进程重启——这是真实的单向故障。
+        .toolbar { homeToolbarItem }
     }
 
-    /// 文档菜单：替换文件、帮助、关闭当前 PDF。
+    /// 导航栏右侧的「首页」按钮。
     ///
-    /// 首页与三个工具工作台共用同一份菜单，因此「关闭当前文档回到首页」
-    /// 这条路径在任何阶段都可达，不必依赖某个特定页面的布局。
+    /// 只有拿到文档（进入工作台）之后才出现：首页自己不需要它，而工作台
+    /// 是导航栈的栈顶根页，这个按钮是离开工作台的唯一路径。
     @ToolbarContentBuilder
-    private var documentMenu: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
+    private var homeToolbarItem: some ToolbarContent {
+        if isDocumentPhase {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    isImporterPresented = true
+                    returnToHome()
                 } label: {
-                    Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
+                    Image(systemName: "house.fill")
                 }
-                NavigationLink {
-                    BookletHelpMobileView(onOpenGuide: { kind in
-                        showGuide(kind)
-                    })
-                } label: {
-                    Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
-                }
-                Button(role: .destructive) {
-                    feature.closeDocument()
-                } label: {
-                    Label(BookletLocalization.string("Close Current PDF"), systemImage: "xmark.circle")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
+                .accessibilityIdentifier("home.button")
+                .accessibilityLabel(BookletLocalization.string("Home"))
             }
-            .accessibilityLabel(BookletLocalization.string("Document menu"))
         }
     }
 
@@ -292,6 +262,15 @@ public struct BookletMakerMobileRootView: View {
     /// 避免退回被覆盖的中间页面。
     private func closeGuideAndReturnHome() {
         activeGuide = nil
+        returnToHome()
+    }
+
+    /// 回到首页：丢弃当前文档并清空导航栈。
+    ///
+    /// 工具工作台是导航栈的栈顶根页，没有返回按钮；首页按钮是离开工作台
+    /// 的唯一路径，因此这里必须把文档一并丢掉——否则首页会显示成「已有
+    /// 文档」的工作台状态。
+    private func returnToHome() {
         navigationPath = NavigationPath()
         feature.closeDocument()
     }

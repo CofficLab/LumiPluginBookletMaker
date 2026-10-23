@@ -487,38 +487,28 @@ class BookletMakerMobileUITestCase: XCTestCase {
     /// ## 与旧版 `backToOverview` 的差异
     ///
     /// 概览页随 `PDFDocumentOverviewView` 一起删除，工具工作台现在是
-    /// 导航栈的**栈顶根页**，导航栏没有返回按钮。回到首页只能走
-    /// 导航栏「更多」菜单里的「Close Current PDF」——它会丢弃当前文档并
-    /// 把工作区退回 `.welcome`。
+    /// 导航栈的**栈顶根页**，导航栏没有返回按钮。回到首页只能走导航栏右上
+    /// 角的「首页」按钮（`home.button`）——它会丢弃当前文档并把工作区退回
+    /// `.welcome`。
     ///
-    /// 找不到菜单按钮说明已经在首页（引导页关闭后会回到首页），直接返回。
+    /// 找不到首页按钮说明已经在首页（引导页关闭后会回到首页），直接返回。
     func backToWelcome(file: StaticString = #filePath, line: UInt = #line) {
         if element("welcome.bookletTool").exists { return }
 
-        // 导航栏右上角是「更多」菜单：首页与工具页共用同一套工具栏。
-        let menuButton = app.navigationBars.buttons["Document menu"]
-        guard menuButton.waitForExistence(timeout: 10) else {
+        // 导航栏右上角是「首页」按钮：只有工作台阶段才出现。
+        let homeButton = element("home.button")
+        guard homeButton.waitForExistence(timeout: 10) else {
             XCTFail(
-                "既不在首页，也找不到导航栏菜单。\(app.debugDescription)",
+                "既不在首页，也找不到导航栏首页按钮。\(app.debugDescription)",
                 file: file, line: line
             )
             return
         }
-        menuButton.tap()
-
-        let closeItem = app.buttons["Close Current PDF"]
-        guard closeItem.waitForExistence(timeout: 10) else {
-            XCTFail(
-                "菜单里没有「Close Current PDF」。\(app.debugDescription)",
-                file: file, line: line
-            )
-            return
-        }
-        closeItem.tap()
+        homeButton.tap()
 
         XCTAssertTrue(
             element("welcome.bookletTool").waitForExistence(timeout: 10),
-            "关闭文档后未回到欢迎页。\(app.debugDescription)",
+            "回到首页后未看到欢迎页。\(app.debugDescription)",
             file: file, line: line
         )
     }

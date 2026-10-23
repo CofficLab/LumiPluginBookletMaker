@@ -16,22 +16,18 @@ final class BookletMakerMobileToolSwitchUITests: BookletMakerMobileUITestCase {
         _ = element("welcome.bookletTool").waitForExistence(timeout: 20)
     }
 
-    /// 关闭当前文档回到欢迎首页。
+    /// 通过导航栏「首页」按钮回到欢迎首页。
     ///
-    /// 走导航栏「更多」菜单里的「Close Current PDF」。首页与工具页共用同一
-    /// 套导航栏工具栏，因此这一条在两种页面下都可用。
+    /// 工具工作台是导航栈的栈顶根页，没有返回按钮；首页按钮是离开工作台
+    /// 的唯一路径。
     private func closeDocument() {
-        let menuButton = app.navigationBars.buttons["Document menu"]
-        XCTAssertTrue(menuButton.waitForExistence(timeout: 10), app.debugDescription)
-        menuButton.tap()
-
-        let closeItem = app.buttons["Close Current PDF"]
-        XCTAssertTrue(closeItem.waitForExistence(timeout: 10), app.debugDescription)
-        closeItem.tap()
+        let homeButton = element("home.button")
+        XCTAssertTrue(homeButton.waitForExistence(timeout: 10), app.debugDescription)
+        homeButton.tap()
 
         XCTAssertTrue(
             element("welcome.bookletTool").waitForExistence(timeout: 10),
-            "关闭文档后未回到欢迎页。\(app.debugDescription)"
+            "点首页按钮后未回到欢迎页。\(app.debugDescription)"
         )
     }
 
@@ -154,5 +150,36 @@ final class BookletMakerMobileToolSwitchUITests: BookletMakerMobileUITestCase {
         assertNotExists("welcome.bookletTool")
 
         closeDocument()
+    }
+
+    /// 导航栏右上角是「首页」按钮，而不是「更多」菜单。
+    ///
+    /// 回归重点：工具工作台是导航栈的栈顶根页，没有返回按钮——首页按钮
+    /// 是离开工作台的唯一路径。因此它必须在工作台阶段出现；首页自己则
+    /// 不需要（点了也没有可去的地方）。
+    func testHomeButtonReplacesTheDocumentMenu() {
+        // 首页：没有首页按钮，也没有「更多」菜单。
+        XCTAssertFalse(
+            element("home.button").exists,
+            "首页不应出现首页按钮。\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.navigationBars.buttons["Document menu"].exists,
+            "首页不应残留「更多」菜单。\(app.debugDescription)"
+        )
+
+        openSampleDocument(tool: "booklet")
+        assertExists("booklet.stageTitle")
+
+        // 工作台：首页按钮出现，且没有「更多」菜单。
+        let homeButton = element("home.button")
+        XCTAssertTrue(
+            homeButton.waitForExistence(timeout: 10),
+            "工作台缺少首页按钮。\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.navigationBars.buttons["Document menu"].exists,
+            "工作台不应残留「更多」菜单。\(app.debugDescription)"
+        )
     }
 }
