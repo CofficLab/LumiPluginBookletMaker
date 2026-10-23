@@ -125,10 +125,16 @@ final class MobileDocumentStore {
     /// Call when the user closes the document. URLs still referenced by a
     /// system save/share sheet are the responsibility of the caller to
     /// release before this is invoked.
-    func clearSession() {
+    ///
+    /// - Parameter preservingOutputs: 保留输出目录。拆分流程导出多个文件后
+    ///   用户点「完成」回到首页，此时导出的文件还在系统分享/保存面板里，
+    ///   立刻删掉会让面板拿到失效路径。
+    func clearSession(preservingOutputs: Bool = false) {
         committedCopyURL = nil
         try? FileManager.default.removeItem(at: inboxDirectory)
-        try? FileManager.default.removeItem(at: outputDirectory)
+        if !preservingOutputs {
+            try? FileManager.default.removeItem(at: outputDirectory)
+        }
     }
 
     /// Remove stale session directories left behind by earlier launches,

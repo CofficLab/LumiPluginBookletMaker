@@ -22,6 +22,11 @@ struct BookletExplanationView: View {
     /// 当前选中的物理纸张（装订前模式，0-based）
     @State private var selectedSheet: Int = 0
 
+    /// 「装订后」翻页示意图的当前展开页组。
+    ///
+    /// 翻页组件把页码暴露成绑定，原理示意图与总览页都要能跳到指定页组。
+    @State private var afterBindingSpreadIndex = 0
+
     private enum BindingTab: String {
         /// 原始 PDF：展示拼版前的 8 页输入页面。
         case original
@@ -96,15 +101,10 @@ struct BookletExplanationView: View {
                 inputPageCount: document.pageCount,
                 settings: settings
             )
-            stageSummary(
-                BookletLocalization.string(
-                    "%lld pages → %lld %@ sheets · %lld print sides",
-                    Int64(document.pageCount),
-                    Int64(physicalSheets.count),
-                    settings.outputPaper.displayName,
-                    Int64(outputSides.count)
-                )
-            )
+            stageSummary(conversionSummary(
+                physicalSheetCount: physicalSheets.count,
+                outputSideCount: outputSides.count
+            ))
         case .beforeBinding:
             sheetTabList
         case .afterBinding:
@@ -114,6 +114,32 @@ struct BookletExplanationView: View {
                 )
             )
         }
+    }
+
+    /// 「转换后」阶段的摘要。
+    ///
+    /// 分册版式（`signatureFold`）的摘要要报「几册」而不是「几张纸」，
+    /// 否则用户在总览页看到的是物理张数，看不出被拆成了多少个可独立折叠的册。
+    private func conversionSummary(physicalSheetCount: Int, outputSideCount: Int) -> String {
+        if settings.layout == .signatureFold {
+            return BookletLocalization.string(
+                "%lld signatures · %lld %@ sheets · %lld print sides",
+                Int64(BookletLayoutEngine.signatureCount(
+                    inputPageCount: document.pageCount,
+                    pagesPerSignature: settings.signaturePageCount
+                )),
+                Int64(physicalSheetCount),
+                settings.outputPaper.displayName,
+                Int64(outputSideCount)
+            )
+        }
+        return BookletLocalization.string(
+            "%lld pages → %lld %@ sheets · %lld print sides",
+            Int64(document.pageCount),
+            Int64(physicalSheetCount),
+            settings.outputPaper.displayName,
+            Int64(outputSideCount)
+        )
     }
 
     private func stageSummary(_ text: String) -> some View {
@@ -211,7 +237,7 @@ struct BookletExplanationView: View {
             }
         ) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(BookletLocalization.string("Sheet number %lld", Int64(index + 1)))
+                Text(physicalSheetTitle(index: index, sheet: physicalSheet))
                     .font(isSelected
                         ? DesignTokens.Typography.caption1
                         : DesignTokens.Typography.caption2)
@@ -224,6 +250,35 @@ struct BookletExplanationView: View {
         }
         .accessibilityIdentifier("booklet.sheet.\(index + 1)")
         .accessibilityValue(isSelected ? "selected" : "unselected")
+    }
+
+    /// 分册版式下物理纸张要按「第几册 · 第几张」标注，否则用户无法把
+    /// 拼版页对应回自己手里的那一张纸。
+    private func physicalSheetTitle(index: Int, sheet: PhysicalSheet) -> String {
+        if settings.layout == .signatureFold {
+            return BookletLocalization.string(
+                "Signature %lld · Sheet %lld",
+                Int64(sheet.signatureIndex + 1),
+                Int64(sheet.sheetIndexInSignature + 1)
+            )
+        }
+        return BookletLocalization.string("Sheet number %lld", Int64(index + 1))
+    }
+
+    private func outputSideTitle(_ outputSide: OutputSheet) -> String {
+        if settings.layout == .signatureFold {
+            return BookletLocalization.string(
+                "Signature %lld · Sheet %lld · %@",
+                Int64(outputSide.signatureIndex + 1),
+                Int64(outputSide.sheetIndexInSignature + 1),
+                sideDisplayName(outputSide.side)
+            )
+        }
+        return BookletLocalization.string(
+            "Sheet number name %lld %@",
+            Int64(outputSide.physicalSheetIndex + 1),
+            sideDisplayName(outputSide.side)
+        )
     }
 
     // MARK: - Right Content
@@ -325,11 +380,7 @@ struct BookletExplanationView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
-            Text(BookletLocalization.string(
-                "Sheet number name %lld %@",
-                Int64(outputSide.physicalSheetIndex + 1),
-                sideDisplayName(outputSide.side)
-            ))
+            Text(outputSideTitle(outputSide))
                 .font(DesignTokens.Typography.caption2)
                 .foregroundStyle(theme.textSecondary)
         }
@@ -353,7 +404,7 @@ struct BookletExplanationView: View {
     }
 
     private var afterBindingContent: some View {
-        FlipBookView(document: document)
+        FlipBookView(document: document, spreadIndex: $afterBindingSpreadIndex)
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
     }

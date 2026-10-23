@@ -168,10 +168,14 @@ public final class BookletMakerMobileFeature: ObservableObject {
     }
 
     /// Close the current document and return to the welcome screen.
-    public func closeDocument() {
+    ///
+    /// - Parameter preservingOutputs: 保留本次会话的输出目录。拆分导出多个
+    ///   文件后用户点「完成」，此时系统分享/保存面板还持有这些路径。
+    public func closeDocument(preservingOutputs: Bool = false) {
         viewModel.clear()
-        documentStore.clearSession()
+        documentStore.clearSession(preservingOutputs: preservingOutputs)
         sessionErrorMessage = nil
+        exportOutcome = nil
         workspace.closeDocument()
     }
 
@@ -220,17 +224,32 @@ public final class BookletMakerMobileFeature: ObservableObject {
 
     public func cancel() { viewModel.cancel() }
 
-    public func makeContentView(onOpenPDF: @escaping () -> Void = {}) -> AnyView {
+    /// 构造当前工具的工作台视图。
+    ///
+    /// - Parameters:
+    ///   - onOpenPDF: 请求系统文件选择器（合并工具需要多选）。
+    ///   - onReturnToGuide: 小册子拼版预览页的「上一步」回到引导第 2 屏。
+    ///   - onFinish: 工作台完成后的收尾动作（回到首页）。
+    public func makeContentView(
+        onOpenPDF: @escaping () -> Void = {},
+        onReturnToGuide: (() -> Void)? = nil,
+        onFinish: (() -> Void)? = nil
+    ) -> AnyView {
         switch workspace.selectedTool {
         case .split:
             AnyView(PDFSplitMobileView(
-                viewModel: viewModel,
-                onExport: { [weak self] in self?.exportSplit() }
+                feature: self,
+                onExport: { [weak self] in self?.exportSplit() },
+                onFinish: { [weak self] in self?.closeDocument(preservingOutputs: true) }
             ))
         case .booklet:
             AnyView(BookletPreviewMobileView(
                 viewModel: viewModel,
-                onExport: { [weak self] in self?.exportBooklet() }
+                onExport: { [weak self] in self?.exportBooklet() },
+                onShare: { [weak self] in self?.presentShare() },
+                onSave: { [weak self] in self?.presentSave() },
+                onReturnToGuide: onReturnToGuide,
+                onFinish: { [weak self] in self?.closeDocument() }
             ))
         case .merge:
             AnyView(PDFMergeMobileView(
@@ -338,9 +357,13 @@ public final class BookletMakerMobileFeature: ObservableObject {
     }
 
     /// Close the result sheet and return to the working state.
-    public func dismissExportResult() {
+    ///
+    /// - Parameter tool: 顺带切换到另一个工具。导出结果页的「后续操作」里
+    ///   有「改为拆分这个 PDF」/「改为制作小册子」，需要连带切换工作台。
+    public func dismissExportResult(selecting tool: Tool? = nil) {
         exportOutcome = nil
         workspace.generationCancelled()
+        if let tool { selectedTool = tool }
     }
 }
 #endif

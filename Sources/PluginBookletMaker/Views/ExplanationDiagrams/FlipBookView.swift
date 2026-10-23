@@ -6,6 +6,7 @@ import SwiftUI
 /// 点击左右两侧或水平拖动即可翻页，带 3D 翻页动画。
 struct FlipBookView: View {
     let document: CurrentPDFDocument
+    @Binding var spreadIndex: Int
 
     /// 一个 spread 的左右槽位（nil 表示该侧无页面）
     private typealias Spread = (left: Int?, right: Int?)
@@ -23,11 +24,12 @@ struct FlipBookView: View {
         return result
     }
 
-    /// 当前展开的 spread 下标
-    @State private var spreadIndex = 0
-
     /// 拖拽中的翻页进度（0…1）
     @State private var flipProgress: CGFloat = 0
+
+    /// 使被外部跳页打断的异步翻页回调失效
+    @State private var flipCompletionToken = UUID()
+    @State private var isCompletingFlip = false
 
     /// 翻页方向：true = 向前翻（右页翻到左边），false = 向后翻
     @State private var flippingForward = true
@@ -35,47 +37,71 @@ struct FlipBookView: View {
     var body: some View {
         GeometryReader { geo in
             let pageHeight = min(
-                geo.size.height - 30,
+                max(geo.size.height, 0),
                 geo.size.width / max(document.pageAspectRatio * 2, 0.01)
             )
             let pageWidth = pageHeight * document.pageAspectRatio
 
-            VStack(spacing: 8) {
-                ZStack {
-                    // 静止纸页：拖动时只替换被翻页下方的那一侧。
-                    // 翻动纸张的背面由 flippingPage 渲染，不能提前作为
-                    // 目标 spread 的另一半露出来。
-                    if !spreads.isEmpty {
-                        spreadView(
-                            isFlipping ? stationarySpreadDuringFlip : spreads[spreadIndex],
-                            pageWidth: pageWidth,
-                            pageHeight: pageHeight
-                        )
-
-                        // 顶层：正在翻转的那一页
-                        if isFlipping {
-                            flippingPage(pageWidth: pageWidth, pageHeight: pageHeight)
-                        }
-
-                        // 左右点击热区
-                        HStack(spacing: 0) {
-                            Color.clear.contentShape(Rectangle())
-                                .onTapGesture { flipBackward() }
-                            Color.clear.contentShape(Rectangle())
-                                .onTapGesture { flipForward() }
-                        }
-                        .frame(width: pageWidth * 2, height: pageHeight)
-                    }
+            ZStack {
+                // 提前加载相邻页，避免翻页落位时 PDF 缩略图尚未准备好而闪白。
+                if canFlipForward {
+                    preloadedPage(spreads[spreadIndex + 1].left, pageWidth: pageWidth, pageHeight: pageHeight)
+                    preloadedPage(spreads[spreadIndex + 1].right, pageWidth: pageWidth, pageHeight: pageHeight)
                 }
-                .frame(width: pageWidth * 2, height: pageHeight)
-                .contentShape(Rectangle())
-                .gesture(flipDrag(pageWidth: pageWidth))
+                if canFlipBackward {
+                    preloadedPage(spreads[spreadIndex - 1].left, pageWidth: pageWidth, pageHeight: pageHeight)
+                    preloadedPage(spreads[spreadIndex - 1].right, pageWidth: pageWidth, pageHeight: pageHeight)
+                }
+
+                // 静止纸页：拖动时只替换被翻页下方的那一侧。
+                // 翻动纸张的背面由 flippingPage 渲染，不能提前作为
+                // 目标 spread 的另一半露出来。
+                if !spreads.isEmpty {
+                    spreadView(
+                        isFlipping ? stationarySpreadDuringFlip : spreads[spreadIndex],
+                        pageWidth: pageWidth,
+                        pageHeight: pageHeight
+                    )
+
+                    // 顶层：正在翻转的那一页
+                    if isFlipping {
+                        flippingPage(pageWidth: pageWidth, pageHeight: pageHeight)
+                    }
+
+                    // 左右点击热区
+                    HStack(spacing: 0) {
+                        Color.clear.contentShape(Rectangle())
+                            .onTapGesture { flipBackward() }
+                        Color.clear.contentShape(Rectangle())
+                            .onTapGesture { flipForward() }
+                    }
+                    .frame(width: pageWidth * 2, height: pageHeight)
+                }
             }
+            .frame(width: pageWidth * 2, height: pageHeight)
+            .contentShape(Rectangle())
+            .gesture(flipDrag(pageWidth: pageWidth))
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .onChange(of: document.id) { _, _ in
             spreadIndex = 0
             flipProgress = 0
+            flipCompletionToken = UUID()
+            isCompletingFlip = false
+        }
+        .onChange(of: document.pageCount) { _, _ in
+            spreadIndex = min(spreadIndex, max(spreads.count - 1, 0))
+            flipProgress = 0
+            flipCompletionToken = UUID()
+            isCompletingFlip = false
+        }
+        .onChange(of: spreadIndex) { _, _ in
+            if isCompletingFlip {
+                isCompletingFlip = false
+                return
+            }
+            flipProgress = 0
+            flipCompletionToken = UUID()
         }
     }
 
@@ -141,16 +167,10 @@ struct FlipBookView: View {
 
         let showBack = abs(angle) > 90
 
-        ZStack {
-            if showBack, let backPage {
-                PDFDocumentPageView(documentURL: document.url, pageNumber: backPage)
-                    .frame(width: pageWidth, height: pageHeight)
-                    .scaleEffect(x: -1, y: 1)  // 镜像，让背面内容方向正确
-            } else if let frontPage {
-                PDFDocumentPageView(documentURL: document.url, pageNumber: frontPage)
-                    .frame(width: pageWidth, height: pageHeight)
-            }
-        }
+        let visiblePage = showBack ? backPage : frontPage
+
+        pageSlot(visiblePage, pageWidth: pageWidth, pageHeight: pageHeight)
+            .scaleEffect(x: showBack ? -1 : 1, y: 1)  // 镜像背面，让内容方向正确
         .frame(width: pageWidth, height: pageHeight)
         .rotation3DEffect(
             .degrees(angle),
@@ -169,31 +189,50 @@ struct FlipBookView: View {
     private var canFlipForward: Bool { spreadIndex < spreads.count - 1 }
     private var canFlipBackward: Bool { spreadIndex > 0 }
 
+    @ViewBuilder
+    private func preloadedPage(_ pageNumber: Int?, pageWidth: CGFloat, pageHeight: CGFloat) -> some View {
+        if let pageNumber {
+            PDFDocumentPageView(documentURL: document.url, pageNumber: pageNumber)
+                .frame(width: pageWidth, height: pageHeight)
+                .hidden()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
     private func flipForward() {
         guard canFlipForward, !isFlipping else { return }
         flippingForward = true
-        withAnimation(.easeInOut(duration: 0.45)) {
-            flipProgress = 1
-        }
-        completeFlip(after: 0.45)
+        animateFlip(duration: 0.45)
     }
 
     private func flipBackward() {
         guard canFlipBackward, !isFlipping else { return }
         flippingForward = false
-        withAnimation(.easeInOut(duration: 0.45)) {
-            flipProgress = 1
-        }
-        completeFlip(after: 0.45)
+        animateFlip(duration: 0.45)
     }
 
-    /// 动画结束后落位到目标 spread 并复位进度
-    private func completeFlip(after delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            spreadIndex = flippingForward
-                ? min(spreadIndex + 1, spreads.count - 1)
-                : max(spreadIndex - 1, 0)
-            flipProgress = 0
+    /// 等页面动画真正完成后，再原子地切换到目标 spread。
+    private func animateFlip(duration: TimeInterval) {
+        let token = UUID()
+        flipCompletionToken = token
+        withAnimation(
+            .easeInOut(duration: duration),
+            completionCriteria: .logicallyComplete
+        ) {
+            flipProgress = 1
+        } completion: {
+            guard flipCompletionToken == token else { return }
+
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                isCompletingFlip = true
+                spreadIndex = flippingForward
+                    ? min(spreadIndex + 1, spreads.count - 1)
+                    : max(spreadIndex - 1, 0)
+                flipProgress = 0
+            }
         }
     }
 
@@ -211,10 +250,7 @@ struct FlipBookView: View {
             }
             .onEnded { _ in
                 if flipProgress > 0.35 {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        flipProgress = 1
-                    }
-                    completeFlip(after: 0.25)
+                    animateFlip(duration: 0.25)
                 } else {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         flipProgress = 0
@@ -227,7 +263,16 @@ struct FlipBookView: View {
 // MARK: - Preview
 
 #Preview("Flip Book") {
-    FlipBookView(document: try! DemoPDFProvider.makeDocument())
-        .frame(width: 480, height: 300)
-        .padding()
+    FlipBookPreviewContainer(document: try! DemoPDFProvider.makeDocument())
+}
+
+private struct FlipBookPreviewContainer: View {
+    let document: CurrentPDFDocument
+    @State private var spreadIndex = 0
+
+    var body: some View {
+        FlipBookView(document: document, spreadIndex: $spreadIndex)
+            .frame(width: 480, height: 300)
+            .padding()
+    }
 }

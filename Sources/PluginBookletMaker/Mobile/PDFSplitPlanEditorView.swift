@@ -2,217 +2,211 @@
 import BookletMakerCore
 import SwiftUI
 
-/// 拆分计划编辑器：页序原样展示（不重排），可点击页面间分隔点
-/// 拆分/合并，支持批量分隔输入与逐段命名，命名冲突即时校验。
+/// Swipe through adjacent pages and place a cut at the boundary between them.
 struct PDFSplitPlanEditorView: View {
     @ObservedObject var viewModel: BookletMakerViewModel
+
+    @State private var visiblePairStart = 1
 
     private var segments: [PDFSplitSegment] { viewModel.splitSegments }
     private var pageCount: Int { viewModel.currentDocument.pageCount }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if viewModel.splitValidationMessage != nil || viewModel.splitFileNameValidationMessage != nil {
-                    validationBanner
+            VStack(alignment: .leading, spacing: 15) {
+                if let message = viewModel.splitValidationMessage {
+                    validationBanner(message)
                 }
 
-                batchInputCard
-
-                pageOrderCard
-
-                namingCard
+                pagePairCard
+                splitSummary
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(16)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+        }
+        .onChange(of: pageCount) { _, newValue in
+            visiblePairStart = min(visiblePairStart, max(newValue - 1, 1))
         }
     }
 
-    // MARK: - Validation
+    private var pagePairCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(BookletLocalization.string("Swipe through pages, then tap the scissors between them to split."))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-    @ViewBuilder
-    private var validationBanner: some View {
-        let message = viewModel.splitValidationMessage
-            ?? viewModel.splitFileNameValidationMessage
-        if let message {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                Text(message)
-                    .font(.footnote)
+            pageNavigation
+            pagePair(startingAt: visiblePairStart)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 28).onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    navigatePair(by: value.translation.width < 0 ? 1 : -1)
+                })
+
+            HStack(spacing: 7) {
+                Image(systemName: "scissors")
+                    .foregroundStyle(BookletMobileStyle.accent)
+                Text(BookletLocalization.string("%lld split points · %lld files",
+                                               Int64(viewModel.splitCutPoints.count),
+                                               Int64(viewModel.splitSegments.count)))
+                    .font(.footnote.weight(.medium))
                 Spacer()
             }
             .padding(10)
-            .background(.yellow.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            .background(BookletMobileStyle.softAccent, in: Capsule())
         }
+        .padding(14)
+        .background(BookletMobileStyle.card, in: RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Batch cut-point input
+    private var pageNavigation: some View {
+        HStack {
+            Button {
+                navigatePair(by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .frame(width: 34, height: 30)
+            }
+            .disabled(visiblePairStart <= 1)
+            .accessibilityLabel(BookletLocalization.string("Previous"))
 
-    private var batchInputCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(BookletLocalization.string("Split after pages"), systemImage: "scissors")
-                .font(.subheadline.weight(.semibold))
-            TextField(
-                BookletLocalization.string("e.g. 2, 5 or 3 8"),
-                text: $viewModel.splitCutPointsText
-            )
-            .textInputAutocapitalization(.never)
-            .keyboardType(.numbersAndPunctuation)
-            .textFieldStyle(.roundedBorder)
-            .accessibilityLabel(BookletLocalization.string("Split after pages"))
-            .accessibilityIdentifier("split.cutPointInput")
-            Text(BookletLocalization.string("Comma- or space-separated page numbers"))
-                .font(.caption)
+            Spacer()
+            Text(BookletLocalization.string("Pages %lld–%lld",
+                                           Int64(visiblePairStart),
+                                           Int64(min(visiblePairStart + 1, pageCount))))
+                .font(.caption.weight(.medium).monospacedDigit())
                 .foregroundStyle(.secondary)
+            Spacer()
+
+            Button {
+                navigatePair(by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .frame(width: 34, height: 30)
+            }
+            .disabled(visiblePairStart >= max(pageCount - 1, 1))
+            .accessibilityLabel(BookletLocalization.string("Next"))
         }
-        .padding(12)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .buttonStyle(.plain)
+        .foregroundStyle(BookletMobileStyle.accent)
     }
 
-    // MARK: - Page order
+    private func navigatePair(by offset: Int) {
+        let lastStart = max(pageCount - 1, 1)
+        withAnimation(.easeInOut(duration: 0.18)) {
+            visiblePairStart = min(max(visiblePairStart + offset, 1), lastStart)
+        }
+    }
 
-    private var pageOrderCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(BookletLocalization.string("Page order"), systemImage: "list.number")
-                .font(.subheadline.weight(.semibold))
-
-            if pageCount <= 10 {
-                pageGrid
+    private func pagePair(startingAt page: Int) -> some View {
+        HStack(spacing: 4) {
+            pageCard(page)
+            splitBoundaryButton(after: page)
+            if page + 1 <= pageCount {
+                pageCard(page + 1)
             } else {
-                pageRows
-            }
-        }
-        .padding(12)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var pageGrid: some View {
-        LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
-            spacing: 10
-        ) {
-            ForEach(1...pageCount, id: \.self) { page in
-                pageCell(page)
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color.secondary.opacity(0.08))
+                    .overlay {
+                        Text(BookletLocalization.string("End of PDF"))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 166)
             }
         }
     }
 
-    private func pageCell(_ page: Int) -> some View {
-        let splitAfter = viewModel.splitCutPoints.contains(page)
-        return VStack(spacing: 3) {
-            PDFDocumentPageView(
-                documentURL: viewModel.currentDocument.url,
-                pageNumber: page
-            )
-            .frame(height: 92)
-            .overlay(alignment: .bottom) {
-                splitDot(page, splitAfter: splitAfter)
-            }
+    private func pageCard(_ page: Int) -> some View {
+        VStack(spacing: 6) {
+            PDFDocumentPageView(documentURL: viewModel.currentDocument.url, pageNumber: page)
+                .frame(maxWidth: .infinity)
+                .frame(height: 166)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
             Text(BookletLocalization.string("Page %lld", Int64(page)))
-                .font(.caption2)
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.15)) {
+        .frame(maxWidth: .infinity)
+    }
+
+    private func splitBoundaryButton(after page: Int) -> some View {
+        let isSelected = viewModel.splitCutPoints.contains(page)
+        return Button {
+            guard page < pageCount else { return }
+            withAnimation(.easeInOut(duration: 0.16)) {
                 viewModel.toggleSplit(after: page)
             }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(BookletLocalization.string(
-            "Page %lld, %@",
-            Int64(page),
-            splitAfter
-                ? BookletLocalization.string("split after this page")
-                : BookletLocalization.string("no split after this page")
-        ))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("split.page.\(page)")
-    }
-
-    private var pageRows: some View {
-        VStack(spacing: 4) {
-            ForEach(1...pageCount, id: \.self) { page in
-                let splitAfter = viewModel.splitCutPoints.contains(page)
-                HStack(spacing: 10) {
-                    PDFDocumentPageView(
-                        documentURL: viewModel.currentDocument.url,
-                        pageNumber: page
-                    )
-                    .frame(width: 34, height: 46)
-                    Text(BookletLocalization.string("Page %lld", Int64(page)))
-                        .font(.footnote)
-                    Spacer()
-                    Image(systemName: splitAfter ? "scissors" : "circle.dashed")
-                        .foregroundStyle(splitAfter ? Color.accentColor : Color.secondary)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        viewModel.toggleSplit(after: page)
-                    }
-                }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(BookletLocalization.string(
-                    "Page %lld, %@",
-                    Int64(page),
-                    splitAfter
-                        ? BookletLocalization.string("split after this page")
-                        : BookletLocalization.string("no split after this page")
-                ))
+        } label: {
+            VStack(spacing: 6) {
+                Rectangle()
+                    .fill(isSelected ? BookletMobileStyle.accent.opacity(0.55) : Color.secondary.opacity(0.28))
+                    .frame(width: 1.5, height: 30)
+                Image(systemName: isSelected ? "scissors.circle.fill" : "scissors")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(isSelected ? BookletMobileStyle.accent : .secondary)
+                Rectangle()
+                    .fill(isSelected ? BookletMobileStyle.accent.opacity(0.55) : Color.secondary.opacity(0.28))
+                    .frame(width: 1.5, height: 30)
             }
+            .frame(width: 36, height: 166)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(page >= pageCount)
+        .accessibilityLabel(BookletLocalization.string(
+            isSelected ? "Remove split after page %lld" : "Split after page %lld", Int64(page)
+        ))
+        .accessibilityIdentifier("split.boundary.\(page)")
     }
 
-    @ViewBuilder
-    private func splitDot(_ page: Int, splitAfter: Bool) -> some View {
-        if splitAfter {
-            Image(systemName: "scissors")
-                .font(.caption2)
-                .padding(3)
-                .background(Color.accentColor, in: Circle())
-                .foregroundStyle(.white)
-        }
-    }
-
-    // MARK: - Naming
-
-    private var namingCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(BookletLocalization.string("File names"), systemImage: "pencil")
+    private var splitSummary: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Label(BookletLocalization.string("Files to export"), systemImage: "doc.on.doc")
                 .font(.subheadline.weight(.semibold))
-
             ForEach(segments, id: \.rangeKey) { segment in
                 HStack(spacing: 10) {
-                    Text(segment.rangeLabel)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 86, alignment: .leading)
-                    TextField(
-                        BookletLocalization.string("Name"),
-                        text: Binding(
-                            get: { viewModel.splitFileNameStem(for: segment) },
-                            set: { viewModel.renameSplitOutputStem(segment, to: $0) }
-                        )
-                    )
-                    .textInputAutocapitalization(.never)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.footnote)
-                    .accessibilityLabel(
-                        BookletLocalization.string("File name for %@", segment.rangeLabel)
-                    )
-                    .accessibilityIdentifier("split.name.\(segment.rangeKey)")
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(BookletMobileStyle.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(segment.rangeLabel)
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(1)
+                        Text(BookletLocalization.string("%lld pages", Int64(segment.pageCount)))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("#\(segment.index)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(BookletMobileStyle.accent)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(BookletMobileStyle.softAccent, in: Capsule())
                 }
-            }
-
-            if let message = viewModel.splitFileNameValidationMessage {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                if segment != segments.last { Divider() }
             }
         }
-        .padding(12)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .padding(14)
+        .background(BookletMobileStyle.card, in: RoundedRectangle(cornerRadius: 14))
     }
+
+    private func validationBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message).font(.footnote)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(.orange)
+        .padding(11)
+        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 11))
+    }
+
 }
 #endif

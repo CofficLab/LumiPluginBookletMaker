@@ -1,4 +1,5 @@
 import CoreGraphics
+import PDFKit
 import SwiftUI
 import BookletMakerCore
 
@@ -146,6 +147,65 @@ private final class PDFPageNSView: NSView {
 // MARK: - iOS (UIView)
 
 #if canImport(UIKit)
+private final class PDFPreviewImage: @unchecked Sendable {
+    let cgImage: CGImage
+
+    init(_ cgImage: CGImage) {
+        self.cgImage = cgImage
+    }
+}
+
+/// Opens the source PDF once and renders page-sized thumbnails away from the
+/// main thread. A bounded image cache lets recycled grid cells reuse work.
+private actor PDFPagePreviewCache {
+    static let shared = PDFPagePreviewCache()
+
+    private let images = NSCache<NSString, PDFPreviewImage>()
+    private var documentFingerprint: String?
+    private var document: PDFDocument?
+
+    private init() {
+        images.totalCostLimit = 48 * 1024 * 1024
+    }
+
+    func image(
+        for url: URL,
+        pageNumber: Int,
+        pixelWidth: Int,
+        pixelHeight: Int
+    ) -> PDFPreviewImage? {
+        guard !Task.isCancelled, pixelWidth > 0, pixelHeight > 0 else { return nil }
+
+        let fileURL = url.standardizedFileURL
+        let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let modified = values?.contentModificationDate?.timeIntervalSince1970.bitPattern ?? 0
+        let fingerprint = "\(fileURL.path):\(values?.fileSize ?? -1):\(modified)"
+        let cacheKey = "\(fingerprint):\(pageNumber):\(pixelWidth)x\(pixelHeight)" as NSString
+        if let cached = images.object(forKey: cacheKey) {
+            return cached
+        }
+
+        if documentFingerprint != fingerprint {
+            documentFingerprint = fingerprint
+            document = PDFDocument(url: fileURL)
+        }
+        guard let document,
+              let page = document.page(at: pageNumber - 1) else {
+            return nil
+        }
+
+        let thumbnail = page.thumbnail(
+            of: CGSize(width: pixelWidth, height: pixelHeight),
+            for: .cropBox
+        )
+        guard !Task.isCancelled, let cgImage = thumbnail.cgImage else { return nil }
+
+        let preview = PDFPreviewImage(cgImage)
+        images.setObject(preview, forKey: cacheKey, cost: pixelWidth * pixelHeight * 4)
+        return preview
+    }
+}
+
 private struct PDFPageCanvas: UIViewRepresentable {
     let documentURL: URL
     let pageNumber: Int
@@ -157,21 +217,30 @@ private struct PDFPageCanvas: UIViewRepresentable {
     func updateUIView(_ uiView: PDFPageUIView, context: Context) {
         uiView.update(documentURL: documentURL, pageNumber: pageNumber)
     }
+
+    static func dismantleUIView(_ uiView: PDFPageUIView, coordinator: ()) {
+        uiView.cancelThumbnailRequest()
+    }
 }
 
 private final class PDFPageUIView: UIView {
     private var documentURL: URL
     private var pageNumber: Int
-    private var document: CGPDFDocument?
+    private let pageImageView = UIImageView()
+    private var thumbnailTask: Task<Void, Never>?
+    private var requestedPixelSize: CGSize?
 
     init(documentURL: URL, pageNumber: Int) {
         self.documentURL = documentURL
         self.pageNumber = pageNumber
-        self.document = CGPDFDocument(documentURL as CFURL)
         super.init(frame: .zero)
         backgroundColor = .white
         isOpaque = true
         contentMode = .redraw
+        pageImageView.backgroundColor = .white
+        pageImageView.contentMode = .scaleAspectFit
+        pageImageView.isOpaque = true
+        addSubview(pageImageView)
     }
 
     @available(*, unavailable)
@@ -180,19 +249,78 @@ private final class PDFPageUIView: UIView {
     }
 
     func update(documentURL: URL, pageNumber: Int) {
+        var pageChanged = false
+        var documentChanged = false
         if self.documentURL != documentURL {
             self.documentURL = documentURL
-            document = CGPDFDocument(documentURL as CFURL)
+            pageChanged = true
+            documentChanged = true
         }
         if self.pageNumber != pageNumber {
             self.pageNumber = pageNumber
+            pageChanged = true
         }
-        setNeedsDisplay(bounds)
+        if pageChanged {
+            thumbnailTask?.cancel()
+            requestedPixelSize = nil
+            // A new page can take noticeably longer to rasterize in a large
+            // PDF. Keep the current bitmap visible until its replacement is
+            // ready instead of exposing a white frame during the page turn.
+            if documentChanged {
+                pageImageView.image = nil
+            }
+            loadThumbnailIfNeeded()
+        }
     }
 
-    override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext() else { return }
-        PDFPageRenderer.drawPage(context, bounds: bounds, document: document, pageNumber: pageNumber)
+    func cancelThumbnailRequest() {
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
+        requestedPixelSize = nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        pageImageView.frame = bounds
+        loadThumbnailIfNeeded()
+    }
+
+    private func loadThumbnailIfNeeded() {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+
+        // These are small print-layout previews. Two pixels per point keeps
+        // them crisp while avoiding full-resolution PDF drawing during scroll.
+        let scale = min(contentScaleFactor, 2)
+        let pixelSize = CGSize(
+            width: (bounds.width * scale).rounded(.up),
+            height: (bounds.height * scale).rounded(.up)
+        )
+        guard requestedPixelSize != pixelSize else { return }
+        requestedPixelSize = pixelSize
+
+        thumbnailTask?.cancel()
+        let url = documentURL
+        let page = pageNumber
+        let pixelWidth = Int(pixelSize.width)
+        let pixelHeight = Int(pixelSize.height)
+        thumbnailTask = Task { [weak self] in
+            guard let preview = await PDFPagePreviewCache.shared.image(
+                for: url,
+                pageNumber: page,
+                pixelWidth: pixelWidth,
+                pixelHeight: pixelHeight
+            ) else {
+                return
+            }
+            guard !Task.isCancelled,
+                  let self,
+                  self.documentURL == url,
+                  self.pageNumber == page,
+                  self.requestedPixelSize == pixelSize else {
+                return
+            }
+            self.pageImageView.image = UIImage(cgImage: preview.cgImage)
+        }
     }
 }
 #endif

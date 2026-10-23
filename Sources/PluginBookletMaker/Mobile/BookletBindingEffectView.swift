@@ -25,7 +25,7 @@ struct BookletBindingEffectView: View {
 
     @ViewBuilder
     private var demoPaper: some View {
-        if viewModel.settings.layout == .bookletFold {
+        if viewModel.settings.layout.isFolded {
             foldedDemo
         } else {
             simplePairDemo
@@ -96,7 +96,7 @@ struct BookletBindingEffectView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            if viewModel.settings.layout == .bookletFold {
+            if viewModel.settings.layout.isFolded {
                 HStack {
                     Text(BookletLocalization.string("Fold angle"))
                     Spacer()
@@ -160,9 +160,14 @@ struct BookletBindingEffectView: View {
     private var explanationText: String {
         switch viewModel.settings.layout {
         // key 必须是完整的单行字面量：字符串拼接会拆成多个片段 key，导致整句查不到翻译。
-        case .bookletFold, .signatureFold:
+        case .bookletFold:
             return BookletLocalization.string(
                 "Two source pages share one physical sheet, front and back. Fold the sheet along the centre line and read pages in order."
+            )
+        case .signatureFold:
+            return BookletLocalization.string(
+                "Split the document into signatures of up to %lld pages. Fold each signature separately, then stack and bind them in page order.",
+                Int64(viewModel.settings.signaturePageCount)
             )
         case .simplePair:
             return BookletLocalization.string(

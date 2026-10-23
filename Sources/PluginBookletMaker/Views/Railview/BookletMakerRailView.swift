@@ -102,11 +102,33 @@ struct BookletMakerRailView: View {
                 AppSegmentedControl(
                     [
                         BookletLocalization.string("Booklet Fold"),
+                        BookletLocalization.string("Sectioned Booklet"),
                         BookletLocalization.string("Simple Pair")
                     ],
                     selection: layoutSelection
                 )
                 .accessibilityIdentifier("booklet.layoutPicker")
+            }
+
+            // 分册版式才需要「每册页数」：折叠版式固定 4 页一册，
+            // 简单并排根本不分组。
+            if viewModel.settings.layout == .signatureFold {
+                AppSettingRow(
+                    title: BookletLocalization.string("Pages per signature")
+                ) {
+                    Picker(
+                        BookletLocalization.string("Pages per signature"),
+                        selection: $viewModel.settings.signaturePageCount
+                    ) {
+                        ForEach(BookletSettings.signaturePageCountOptions, id: \.self) { count in
+                            Text(BookletLocalization.string("%lld pages", Int64(count)))
+                                .tag(count)
+                        }
+                    }
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("booklet.signaturePages")
+                }
             }
 
             settingSlider(
@@ -345,10 +367,26 @@ struct BookletMakerRailView: View {
         )
     }
 
+    /// 版式分段控件的选中项。
+    ///
+    /// 控件顺序是「折叠 / 分册 / 简单并排」，与 `LayoutMode` 的取值一一对应，
+    /// 因此用下标而不是枚举本身来桥接。
     private var layoutSelection: Binding<Int> {
         Binding(
-            get: { viewModel.settings.layout == .bookletFold ? 0 : 1 },
-            set: { viewModel.settings.layout = $0 == 0 ? .bookletFold : .simplePair }
+            get: {
+                switch viewModel.settings.layout {
+                case .bookletFold: 0
+                case .signatureFold: 1
+                case .simplePair: 2
+                }
+            },
+            set: { index in
+                switch index {
+                case 0: viewModel.settings.layout = .bookletFold
+                case 1: viewModel.settings.layout = .signatureFold
+                default: viewModel.settings.layout = .simplePair
+                }
+            }
         )
     }
 

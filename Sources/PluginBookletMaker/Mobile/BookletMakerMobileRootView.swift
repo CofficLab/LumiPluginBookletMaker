@@ -27,6 +27,8 @@ public struct BookletMakerMobileRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isImporterPresented = false
     @State private var activeGuide: BookletGuideKind?
+    /// 引导打开时落在第几屏。帮助页的「再看一次引导」可以从任意一屏开始。
+    @State private var guideInitialPage = 1
     @State private var saveDocument: PDFFileDocument?
     @State private var saveFilename = "booklet"
     @State private var isSavingPresented = false
@@ -109,6 +111,7 @@ public struct BookletMakerMobileRootView: View {
         .fullScreenCover(item: $activeGuide) { kind in
             BookletGuideFlowView(
                 kind: kind,
+                initialPage: guideInitialPage,
                 onOpenPDF: {
                     // 多选与否由 `fileImporter` 按当前工具决定，这里只负责
                     // 撤下引导并把系统文件选择器拉起来。
@@ -215,7 +218,10 @@ public struct BookletMakerMobileRootView: View {
                 importingView
             case .ready, .generating, .cancelling, .resultReady:
                 // 引导已经选定工具，这里直接进对应工作台，不再经过中间概览页。
-                feature.makeContentView(onOpenPDF: { isImporterPresented = true })
+                feature.makeContentView(
+                    onOpenPDF: { isImporterPresented = true },
+                    onReturnToGuide: { showGuide(.booklet, startingAt: 2) }
+                )
             }
         }
         // 文档菜单在所有阶段常驻。
@@ -240,6 +246,13 @@ public struct BookletMakerMobileRootView: View {
                 } label: {
                     Label(BookletLocalization.string("Replace PDF…"), systemImage: "arrow.triangle.2.circlepath")
                 }
+                NavigationLink {
+                    BookletHelpMobileView(onOpenGuide: { kind in
+                        showGuide(kind)
+                    })
+                } label: {
+                    Label(BookletLocalization.string("Help"), systemImage: "questionmark.circle")
+                }
                 Button(role: .destructive) {
                     feature.closeDocument()
                 } label: {
@@ -259,11 +272,17 @@ public struct BookletMakerMobileRootView: View {
 
     /// 打开引导，并保证工作台已经准备好对应的工具。
     ///
-    /// 引导从第 1 页开始（`BookletGuideFlowView` 自行按工具钳制页码），
-    /// 这里统一补一次工具选择——否则引导结束时打开的文件会落进
-    /// 默认工具的工作台。
-    private func showGuide(_ kind: BookletGuideKind) {
+    /// 引导有两个入口：首页的工具卡，以及帮助页的「再看一次引导」。
+    /// 后者不带工具信息，所以这里统一补一次工具选择——否则引导结束时
+    /// 打开的文件会落进默认工具的工作台。
+    ///
+    /// - Parameters:
+    ///   - kind: 引导的工具种类。
+    ///   - startingAt: 引导从第几屏开始。小册子拼版预览的「上一步」要回到
+    ///     第 2 屏（讲解「选择 PDF」那一步），帮助页则从第 1 屏开始。
+    private func showGuide(_ kind: BookletGuideKind, startingAt page: Int = 1) {
         prepareTool(for: kind)
+        guideInitialPage = page
         activeGuide = kind
     }
 

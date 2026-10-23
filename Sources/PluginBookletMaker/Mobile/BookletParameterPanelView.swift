@@ -40,10 +40,29 @@ struct BookletParameterPanelView: View {
                 Spacer()
                 Picker(BookletLocalization.string("Layout"), selection: $viewModel.settings.layout) {
                     Text(BookletLocalization.string("Booklet Fold")).tag(LayoutMode.bookletFold)
+                    Text(BookletLocalization.string("Sectioned Booklet")).tag(LayoutMode.signatureFold)
                     Text(BookletLocalization.string("Simple Pair")).tag(LayoutMode.simplePair)
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("params.layout")
+            }
+
+            // 分册版式才需要「每册页数」：折叠版式固定 4 页一册，
+            // 简单并排根本不分组。
+            if viewModel.settings.layout == .signatureFold {
+                HStack {
+                    Label(BookletLocalization.string("Pages per signature"), systemImage: "rectangle.stack")
+                    Spacer()
+                    Picker(BookletLocalization.string("Pages per signature"),
+                           selection: $viewModel.settings.signaturePageCount) {
+                        ForEach(BookletSettings.signaturePageCountOptions, id: \.self) { count in
+                            Text(BookletLocalization.string("%lld pages", Int64(count)))
+                                .tag(count)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("params.signaturePages")
+                }
             }
         }
     }
