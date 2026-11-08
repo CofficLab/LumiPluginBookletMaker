@@ -1,22 +1,23 @@
 # LumiPluginBookletMaker
 
-Lumi 与 GameFactory 共享的 Booklet Maker 远程包。
+📖 English | [中文版](README_zh.md)
+
+Shared remote Booklet Maker package for Lumi and GameFactory.
 
 ## Products
 
-本仓库导出两个 product，对应两层职责：
+This repository exports two products, corresponding to two layers of responsibility:
 
-| Product | Target | 说明 |
+| Product | Target | Description |
 |---------|--------|------|
-| `BookletMakerCore` | `Sources/BookletMakerCore` | 纯领域逻辑：纸张尺寸、折页布局引擎、拆分计划。不依赖 Kernel / Providers / SwiftUI。 |
-| `PluginBookletMaker` | `Sources/PluginBookletMaker` | 插件层：`SuperPlugin` 实现 + SwiftUI 界面 + PDF 检查/渲染/拆分/合并服务。 |
+| `BookletMakerCore` | `Sources/BookletMakerCore` | Pure domain logic: paper sizes, folding layout engine, split plans. No dependencies on Kernel / Providers / SwiftUI. |
+| `PluginBookletMaker` | `Sources/PluginBookletMaker` | Plugin layer: `SuperPlugin` implementation + SwiftUI interface + PDF inspection/rendering/splitting/merging services. |
 
-`BookletMakerCore` 保留原有仓库名对应的语义，两个宿主现有的 `LumiBookletMaker` 依赖可平滑迁移到本包。
+`BookletMakerCore` retains the semantics of the original repository name, so both hosts' existing `LumiBookletMaker` dependencies can migrate smoothly to this package.
 
-## 宿主注入约定
+## Host Injection Convention
 
-本包同时服务两个形态差异很大的宿主（Lumi 的多插件工作台、GameFactory 的独立 App），
-因此**不硬编码任何宿主专属概念**，全部通过 `BookletMakerPlugin.init` 注入。
+This package serves two hosts with very different forms (Lumi's multi-plugin workbench and GameFactory's standalone app), so it **hardcodes no host-specific concepts** — everything is injected through `BookletMakerPlugin.init`.
 
 ### pluginID
 
@@ -32,13 +33,12 @@ public init(
 )
 ```
 
-- `id` 决定 `PluginMetadata.id` 与插件数据目录名，两个宿主各用各的命名空间，互不干扰。
-- `order` / `policy` 决定加载顺序与启用策略。
+- `id` determines `PluginMetadata.id` and the plugin data directory name; each host uses its own namespace, without interference.
+- `order` / `policy` determine load order and enable policy.
 
-### 聊天区显隐
+### Chat Area Visibility
 
-Lumi 把 Booklet Maker 作为工作台展示，激活时需收起聊天区；GameFactory 的
-Booklet Maker 是独立 App，没有聊天区概念。宿主按需注入钩子：
+Lumi presents Booklet Maker as a workbench and needs to collapse the chat area when activated; GameFactory's Booklet Maker is a standalone app with no chat area concept. Hosts inject hooks as needed:
 
 ```swift
 // Lumi
@@ -55,22 +55,20 @@ BookletMakerPlugin(
 )
 ```
 
-不传钩子时插件照常启动与切换布局。详见 `ToastSuperPlugin` 的同类做法。
+Without hooks, the plugin still boots and switches layouts normally. See the same approach in `ToastSuperPlugin` for reference.
 
-## 能力范围
+## Capability Scope
 
-- 小册子拼版：简单对折、骑马钉、折页签名，输出可打印 PDF
-- PDF 拆分：按切点导出多个文件
-- PDF 合并：按给定顺序合并
-- macOS：NSSavePanel / NSOpenPanel 导出；iOS：文件选择与分享
+- Booklet imposition: simple fold, saddle stitch, folding signatures, outputting printable PDFs
+- PDF splitting: export multiple files by cut points
+- PDF merging: merge in a given order
+- macOS: NSSavePanel / NSOpenPanel export; iOS: file selection and sharing
 
-本包**不**向 Agent 贡献工具（`pdf_inspect` / `booklet_make` / `pdf_split` / `pdf_merge` /
-`booklet_preview`）与 Skill。原 Lumi 本地包中的 Agent Tools 与 Skills 目录已在迁移时移除，
-以避免引入 `KitAgentTool` / `ProviderToolManager` / `ProviderSkill` 等宿主专属依赖。
+This package does **not** contribute tools to the Agent (`pdf_inspect` / `booklet_make` / `pdf_split` / `pdf_merge` / `booklet_preview`) or Skills. The Agent Tools and Skills directories from the original Lumi local package were removed during migration, to avoid introducing host-specific dependencies such as `KitAgentTool` / `ProviderToolManager` / `ProviderSkill`.
 
-## 依赖
+## Dependencies
 
-全部为远程包，无本地路径依赖：
+All are remote packages, with no local path dependencies:
 
 - `LumiKernel`
 - `LumiProviders`
@@ -87,179 +85,135 @@ swift test
 
 ## Testing
 
-本包自带三层测试，全部在仓库内，无需外部宿主工程即可验证。
+This package includes three layers of tests, all inside the repository, verifiable without an external host project.
 
-| 层 | 位置 | 数量 | 运行方式 |
+| Layer | Location | Count | How to run |
 |---|---|---|---|
-| 领域层 | `Tests/BookletMakerCoreTests` | swift-testing `@Suite` | `swift test` |
-| 插件层 | `Tests/PluginBookletMakerTests` | 115 项 XCTest | `swift test` |
-| 界面层 | `BookletMakerUITestHost/UITests` | 40 项 XCUITest | `xcodebuild test` |
+| Domain layer | `Tests/BookletMakerCoreTests` | swift-testing `@Suite` | `swift test` |
+| Plugin layer | `Tests/PluginBookletMakerTests` | 115 XCTest items | `swift test` |
+| UI layer | `BookletMakerUITestHost/UITests` | 40 XCUITest items | `xcodebuild test` |
 
-### 单元测试
+### Unit Tests
 
 ```sh
-swift test                                   # 全部
+swift test                                   # all
 swift test --filter BookletMakerViewModelTests
 swift test --enable-code-coverage
 ```
 
-其中 `BookletLocalizationCatalogTests` 是本地化目录的守卫，把四条容易静默退化的
-规则固化为断言：key 在全部五种语言下必须有非空译文、各语言占位符数量须一致且
-定位占位符（`%1$@`）位置连续、代码里引用的每个 key 必须存在于目录、`sourceLanguage`
-须为 `en`。新增文案时忘记维护 xcstrings 会立刻失败，而不是等到某个语种的界面
-里出现一两句漏翻译的英文。
+`BookletLocalizationCatalogTests` is the guard for the localization catalog, hardening four easily-silently-degraded rules into assertions: every key must have a non-empty translation in all five languages, placeholder counts must be consistent across languages and positional placeholders (`%1$@`) must be contiguous, every key referenced in code must exist in the catalog, and `sourceLanguage` must be `en`. Forgetting to maintain the xcstrings when adding new strings fails immediately, rather than waiting for a few untranslated English strings to appear in some language's UI.
 
-### 界面测试
+### UI Tests
 
-界面测试需要宿主 App 与 Xcode test runner，因此以 Xcode 工程形式内嵌在仓库内
-（`project.yml` + XcodeGen 生成），不依赖任何宿主专属的私有包。
+UI tests need a host app and the Xcode test runner, so they are embedded in the repository as an Xcode project (`project.yml` + XcodeGen generation), with no dependency on any host-specific private packages.
 
 ```sh
-brew install xcodegen          # 一次性
-./generate-ui-test-project.sh  # 生成 BookletMakerUITests.xcodeproj
+brew install xcodegen          # one-time
+./generate-ui-test-project.sh  # generates BookletMakerUITests.xcodeproj
 xcodebuild test \
   -project BookletMakerUITests.xcodeproj \
   -scheme BookletMakerUITests \
   -destination 'platform=macOS'
 ```
 
-`BookletMakerTestHost` 是一个最小宿主 App，按真实宿主（GameFactory 的
-`BookletMakerApp`）的顺序装配：**注册 Provider → 启动插件 → 组装视图**。
-该顺序不可颠倒：插件 `onBoot` 会向 Rail 注册 tab、向 ContentView 注入内容区，
-提前组装会让这些区域停留在空状态。
+`BookletMakerTestHost` is a minimal host app that assembles in the same order as the real host (GameFactory's `BookletMakerApp`): **register Providers → boot plugins → assemble views**. This order must not be reversed: the plugin's `onBoot` registers tabs with the Rail and injects content into the ContentView; assembling views early would leave these areas in an empty state.
 
-覆盖范围：
+Coverage:
 
-| 套件 | 覆盖 |
+| Suite | Coverage |
 |---|---|
-| `BookletMakerBookletUITests` | 四个预览阶段切换、装订前纸张列表、纸张/版式/滑块/开关交互、补白开关在书本折叠版式下强制禁用、锚点跨语言稳定 |
-| `BookletMakerSplitUITests` | 切分点选中与反选、多切分点独立、导出门控随有效性翻转、页面点击与侧栏输入两条路径等价、非法输入校验、分段重命名 |
-| `BookletMakerMergeUITests` | 空队列与导出禁用、汇总如实反映队列规模、与小册子设置互斥 |
-| `BookletMakerMergeQueueUITests` | 队列注入后的排序（双向）、边界按钮禁用、删除、导出门控变化、删空回到空态 |
-| `BookletMakerExportPanelUITests` | 三个工具的导出面板、保存/取消、替换确认、面板关闭后界面恢复 |
-| `BookletMakerToolSwitchUITests` | 三工具切换后侧栏设置与主按钮文案同步 |
-| `BookletMakerLocalizationUITests` | en / zh-Hans / zh-Hant 文案，以及切换语言后锚点结构不变 |
+| `BookletMakerBookletUITests` | four preview stage switches, pre-binding paper list, paper/layout/slider/switch interactions, padding switch forced disabled in book-fold layout, anchors stable across languages |
+| `BookletMakerSplitUITests` | cut point selection and deselection, independent multi-cut-points, export gating flips with validity, page-click and sidebar-input paths equivalent, invalid input validation, segment renaming |
+| `BookletMakerMergeUITests` | empty queue and export disabled, summary faithfully reflects queue size, mutually exclusive with booklet settings |
+| `BookletMakerMergeQueueUITests` | sorting after queue injection (both directions), boundary button disabling, deletion, export gating changes, returning to empty state after clearing |
+| `BookletMakerExportPanelUITests` | export panels for the three tools, save/cancel, replace confirmation, UI restoration after panel close |
+| `BookletMakerToolSwitchUITests` | sidebar settings and main button copy sync after switching between the three tools |
+| `BookletMakerLocalizationUITests` | en / zh-Hans / zh-Hant copy, and unchanged anchor structure after language switch |
 
-#### 编写界面测试时的两条约定
+#### Two conventions for writing UI tests
 
-1. **只用 `accessibilityIdentifier` 定位元素**，不要用文案——文案随本地化变动，
-   identifier 不会。唯一例外是 `BookletMakerLocalizationUITests`，那里用文案
-   正是为了验证文案本身。
-2. **断言状态而非存在性**：元素存在只说明渲染了，真正要校验的是选中态、
-   启用态、门控原因。
+1. **Locate elements only via `accessibilityIdentifier`, not copy** — copy changes with localization; identifiers do not. The only exception is `BookletMakerLocalizationUITests`, where using copy is precisely to verify the copy itself.
+2. **Assert state, not existence**: an element's existence only means it rendered; what really needs verification is selected state, enabled state, and gating reasons.
 
-#### 系统面板（保存 / 选择文件夹）在 XCUITest 里的形态
+#### The form of system panels (save / choose folder) in XCUITest
 
-导出用 `NSSavePanel.runModal()` / `NSOpenPanel.runModal()`，实测有几个反直觉之处：
+Export uses `NSSavePanel.runModal()` / `NSOpenPanel.runModal()`; in practice there are a few counterintuitive points:
 
-| 现象 | 正确做法 |
+| Phenomenon | Correct approach |
 |---|---|
-| 面板挂在 `app.dialogs` 下，**不是** `app.sheets`，也不是 `app.windows` | `app.dialogs.matching(identifier:)` |
-| 面板标题不暴露给 XCUITest（`label` 为空、无 StaticText 子节点） | 改用 identifier 区分：`save-panel` / `open-panel` |
-| 两种面板的确认按钮都叫 `OKButton` | 不能靠它区分面板类型 |
-| 目标文件已存在时叠一个「是否替换」的 sheet | `confirmReplaceIfPresent()`，按钮为 `action-button-1` |
-| 面板打开期间查询下层界面报 `still interrupting` | `waitForModalPanelToClose()` 后再断言 |
+| The panel hangs under `app.dialogs`, **not** `app.sheets`, nor `app.windows` | `app.dialogs.matching(identifier:)` |
+| The panel title is not exposed to XCUITest (`label` is empty, no StaticText children) | Distinguish by identifier instead: `save-panel` / `open-panel` |
+| Both panel types' confirm buttons are called `OKButton` | Cannot distinguish panel type by it |
+| When the target file already exists, a "replace?" sheet stacks on top | `confirmReplaceIfPresent()`, button is `action-button-1` |
+| Querying the underlying UI while the panel is open reports `still interrupting` | Assert after `waitForModalPanelToClose()` |
 
-此外：测试宿主**不开沙盒**，而 XCUITest runner 自带沙盒且与宿主进程隔离。
-因此导出产物写在宿主指定的目录里，runner 既读不到也清理不掉——测试模式
-下宿主会把面板预选到自己的临时目录，避免往用户文件夹里丢文件。
+In addition: the test host **does not enable the sandbox**, while the XCUITest runner has its own sandbox and is isolated from the host process. Therefore export artifacts are written to a directory designated by the host, which the runner can neither read nor clean up — in test mode the host pre-selects its own temporary directory for the panel, to avoid dumping files into the user's folders.
 
-#### 关于导出产物的校验
+#### On verifying export artifacts
 
-界面测试**不**断言导出文件的内容：产物确实被正确写出，但 runner 无权读取，
-且产物正确性（页数、分段、文件名）由 `BookletMakerViewModelTests` 覆盖。
-界面测试只负责「交互链路完整走通」。
+UI tests do **not** assert the content of exported files: artifacts are indeed written correctly, but the runner has no permission to read them, and artifact correctness (page count, segments, file names) is covered by `BookletMakerViewModelTests`. UI tests are only responsible for "the interaction chain runs through completely".
 
-#### 一个容易踩的坑
+#### An easy pitfall
 
-**不要给容器视图打 `accessibilityIdentifier`。** SwiftUI 会把祖先的 identifier
-下推到每一个叶子元素，导致容器内部的锚点全部被同一值覆盖而无法定位。本包
-曾因此让 `split.cutPoint.*`、`split.summary`、`merge.insufficientHint`
-一度全部失效。若需要判断某个区域是否出现，请在区域内的**叶子元素**上取锚点。
+**Do not put `accessibilityIdentifier` on container views.** SwiftUI pushes ancestors' identifiers down to every leaf element, causing all anchors inside the container to be overwritten by the same value and become unlocatable. This package once made `split.cutPoint.*`, `split.summary`, and `merge.insufficientHint` all fail because of this. If you need to determine whether a region appears, take the anchor on a **leaf element** inside the region.
 
-#### 已知差异
+#### Known differences
 
-测试宿主使用公开的 `DefaultRootViewProviding` 并自行拼装根布局，而真实宿主使用
-自己的根视图实现。测试宿主**不**装配 `CommandProviding` 与设置侧栏插件，因此
-设置窗口相关界面不在本套件覆盖范围内——该能力来自宿主侧包，插件仓库无法自证。
+The test host uses the public `DefaultRootViewProviding` and assembles the root layout itself, while the real host uses its own root view implementation. The test host does **not** assemble `CommandProviding` and the settings sidebar plugin, so settings-window-related UI is not covered by this suite — that capability comes from host-side packages and cannot be self-verified by the plugin repository.
 
-### iOS 界面测试
+### iOS UI Tests
 
-iOS 侧的 UI 测试覆盖移动端独立架构（`BookletMakerMobileRootView` 直接挂载，不经过
-Kernel Provider）。测试工程与 macOS 共用 `BookletMakerUITests.xcodeproj`，但 target
-和宿主 App 完全独立。
+The iOS-side UI tests cover the mobile standalone architecture (`BookletMakerMobileRootView` mounted directly, without going through the Kernel Provider). The test project shares `BookletMakerUITests.xcodeproj` with macOS, but the target and host app are completely independent.
 
 ```sh
-# 生成工程（如果还没生成）
+# generate the project (if not already generated)
 ./generate-ui-test-project.sh
 
-# 运行 iOS UI 测试
+# run iOS UI tests
 xcodebuild test \
   -project BookletMakerUITests.xcodeproj \
   -scheme BookletMakerMobileUITests \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-#### iOS 与 macOS 测试的五处实质差异
+#### Five substantive differences between iOS and macOS tests
 
-1. **无窗口前台等待**：macOS 需要 `NSWorkspace.frontmostApplication` 轮询，因为首次
-   点击会被窗口激活竞态吞掉；iOS 上 App 启动即为前台，没有这个竞态。
-2. **点击用 tap 而非 click**：`XCUIElement.click()` 在 iOS 上不存在。
-3. **必须滚动**：XCUITest 查询基于当前快照，首屏之外的元素在 AX 树里不存在（不是
-   不可见，是**不存在**）。所有存在性断言都先滚动再判断。
-4. **语言注入方式不同**：macOS 用 `-AppleLanguages`；iOS 还需一并覆盖 `AppleLocale`，
-   否则系统组件仍可能显示宿主语言。
-5. **系统面板形态不同**：macOS 的 `NSSavePanel` 挂在 `app.dialogs` 下可驱动；iOS 的
-   `UIDocumentPickerViewController` / `UIActivityViewController` 在 App 的辅助功能树
-   之外运行，XCUITest 既无法驱动也无法断言其结果。
+1. **No window foreground waiting**: macOS needs `NSWorkspace.frontmostApplication` polling, because the first click can be swallowed by a window-activation race; on iOS the app is foregrounded at launch, so there is no such race.
+2. **Tap instead of click**: `XCUIElement.click()` does not exist on iOS.
+3. **Scrolling is mandatory**: XCUITest queries are based on the current snapshot; elements beyond the first screen do not exist in the AX tree (not invisible, but **nonexistent**). All existence assertions scroll first, then judge.
+4. **Different language injection**: macOS uses `-AppleLanguages`; iOS must also override `AppleLocale`, otherwise system components may still display the host language.
+5. **Different system panel forms**: macOS's `NSSavePanel` hangs under `app.dialogs` and can be driven; iOS's `UIDocumentPickerViewController` / `UIActivityViewController` run outside the app's accessibility tree, and XCUITest can neither drive them nor assert their results.
 
-#### iOS 测试覆盖范围
+#### iOS test coverage
 
-| 套件 | 覆盖 | 状态 |
+| Suite | Coverage | Status |
 |---|---|---|
-| `BookletMakerMobileToolSwitchUITests` | 欢迎页 → 概览页 → 工具页导航、工具切换后内容正确性、关闭文档回到欢迎页 | ✅ 5/5 |
-| `BookletMakerMobileBookletUITests` | 六阶段指示器切换、参数面板控件、补白开关门控、拼版预览页序、摘要文本 | ✅ 9/9 |
-| `BookletMakerMobileSplitUITests` | 切分点点击增删、批量输入、非法输入校验、摘要随切分点变化、分段切换 | ✅ 9/9 |
-| `BookletMakerMobileMergeUITests` | 空队列门控、摘要文本 | ⚠️ 1/6 |
+| `BookletMakerMobileToolSwitchUITests` | welcome page → overview page → tool page navigation, content correctness after tool switching, closing document back to welcome page | ✅ 5/5 |
+| `BookletMakerMobileBookletUITests` | six-stage indicator switching, parameter panel controls, padding switch gating, imposition preview page order, summary text | ✅ 9/9 |
+| `BookletMakerMobileSplitUITests` | cut point tap add/remove, batch input, invalid input validation, summary changes with cut points, segment switching | ✅ 9/9 |
+| `BookletMakerMobileMergeUITests` | empty queue gating, summary text | ⚠️ 1/6 |
 
-合并测试的其余 5 项涉及队列注入（`-SeedMergeQueue N`），当前存在时序问题：宿主应用
-在 `onAppear` 时延迟注入，但工具切换和注入完成的时序难以精确同步。空队列测试已通过，
-验证了门控逻辑正确。完整的合并队列测试需要进一步调试宿主注入逻辑或采用不同的测试方案
-（如手动 UI 操作添加文件，但 iOS `fileImporter` 无法被 XCUITest 驱动）。
+The other 5 merge tests involve queue injection (`-SeedMergeQueue N`), which currently has a timing issue: the host app injects with a delay in `onAppear`, but the timing of tool switching and injection completion is hard to synchronize precisely. The empty queue test passes, verifying the gating logic is correct. Complete merge queue tests need further debugging of the host injection logic or a different test approach (e.g., adding files via manual UI operations, but iOS `fileImporter` cannot be driven by XCUITest).
 
-#### iOS 测试的关键技术点
+#### Key technical points for iOS tests
 
-**滚动处理**：iOS 测试基类提供了 `scrollTo()` 和 `scrollHorizontallyTo()` 方法，
-自动处理首屏外元素的可见性问题。阶段指示器是横向 `ScrollView`，只有前两项在首屏内，
-其余需要横向滚动。
+**Scroll handling**: the iOS test base class provides `scrollTo()` and `scrollHorizontallyTo()` methods, automatically handling the visibility issue of off-screen elements. The stage indicator is a horizontal `ScrollView`; only the first two items are within the first screen, the rest need horizontal scrolling.
 
-**键盘处理**：文本框获得焦点后软键盘会占据屏幕下半部分，把下方内容挤出可命中区域。
-测试基类的 `dismissKeyboard()` 通过点击导航栏标题收起键盘，避免影响后续断言。
+**Keyboard handling**: after a text field gains focus, the soft keyboard occupies the lower half of the screen, pushing content below out of the hittable area. The test base class's `dismissKeyboard()` collapses the keyboard by tapping the navigation bar title, avoiding impact on subsequent assertions.
 
-**锚点设计**：iOS 侧的锚点遵循 `overview.*` / `booklet.*` / `split.*` / `merge.*` /
-`welcome.*` / `params.*` / `stage.*` 等前缀，与 macOS 侧的锚点体系不重叠。所有锚点
-都加在叶子元素上，避免 SwiftUI 的 identifier 下推问题。
+**Anchor design**: the iOS-side anchors follow prefixes such as `overview.*` / `booklet.*` / `split.*` / `merge.*` / `welcome.*` / `params.*` / `stage.*`, which do not overlap with the macOS-side anchor system. All anchors are placed on leaf elements, avoiding SwiftUI's identifier push-down issue.
 
-**选中态断言**：SwiftUI 对被横向轨道**裁剪**的元素会错误地报告 `isSelected == true`。
-阶段切换测试改为断言「该阶段呈现的内容」而非「选中态」，绕开了 trait 报告缺陷。
+**Selected state assertion**: SwiftUI incorrectly reports `isSelected == true` for elements clipped by a horizontal track. The stage switching tests instead assert "the content presented by that stage" rather than "selected state", working around the trait reporting defect.
 
-#### iOS 宿主装配
+#### iOS host assembly
 
-`BookletMakerMobileTestHostApp` 直接挂载 `BookletMakerMobileRootView(feature:)`，
-不经过 Kernel Provider 装配。这与 macOS 宿主的「注册 Provider → 启动插件 → 组装视图」
-顺序完全不同，反映了 iOS 端独立 App 的架构特点。
+`BookletMakerMobileTestHostApp` mounts `BookletMakerMobileRootView(feature:)` directly, without going through Kernel Provider assembly. This is completely different from the macOS host's "register Providers → boot plugins → assemble views" order, reflecting the architectural characteristics of the iOS standalone app.
 
-合并队列测试通过 `-SeedMergeQueue N` 启动参数注入测试用 PDF。宿主应用检测到该参数后
-会调用 `feature.importDocuments(from:)`，该方法会检测到参数并自动切换到合并工具，
-确保文档被正确加载为合并队列而不是单个文档。
+Merge queue tests inject test PDFs via the `-SeedMergeQueue N` launch argument. The host app detects this argument and calls `feature.importDocuments(from:)`, which detects the argument and automatically switches to the merge tool, ensuring documents are correctly loaded as a merge queue rather than a single document.
 
-#### 已知限制
+#### Known limitations
 
-1. **合并队列注入时序**：宿主在 `onAppear` 后延迟 1 秒注入，但测试切换到合并工具的
-   时机不确定，可能导致注入在工具切换前或后发生。当前只有空队列测试稳定通过。
-2. **文件选择器无法自动化**：iOS 的 `fileImporter` 呈现系统文件选择器，XCUITest 无法
-   驱动。因此所有需要导入文件的测试都依赖宿主注入或示例文档。
-3. **导出面板测试缺失**：iOS 端的导出走 `UIActivityViewController`（分享面板）或
-   `fileExporter`（系统保存对话框），都在 App 进程外运行，无法被 XCUITest 断言。
-   导出链路的正确性由单元测试（`BookletMakerViewModelTests`）覆盖。
+1. **Merge queue injection timing**: the host injects with a 1-second delay after `onAppear`, but the timing of tests switching to the merge tool is uncertain, so injection may occur before or after the tool switch. Currently only the empty queue test passes stably.
+2. **File picker cannot be automated**: iOS's `fileImporter` presents the system file picker, which XCUITest cannot drive. Therefore all tests requiring file imports rely on host injection or sample documents.
+3. **Export panel tests missing**: iOS exports go through `UIActivityViewController` (share sheet) or `fileExporter` (system save dialog), both running outside the app process and unassertable by XCUITest. The correctness of the export chain is covered by unit tests (`BookletMakerViewModelTests`).
 
